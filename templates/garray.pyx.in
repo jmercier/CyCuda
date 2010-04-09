@@ -1,7 +1,6 @@
-cimport cuda
+from cycuda cimport cuda
 cimport numpy as np
 
-from garray cimport *
 from libcuda cimport *
 
 import cuda

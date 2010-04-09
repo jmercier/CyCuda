@@ -1,5 +1,4 @@
-cimport cuda
-cimport cudagl
+from cycuda cimport cudagl
 
 import threading
 import struct
@@ -137,7 +136,7 @@ cpdef DeviceBuffer allocate1D(tuple shape, unsigned int esize):
     for s in shape:
         size *= s
     CUDA_SAFE_CALL cuMemAlloc(&data, size * esize)
-    cdef cuda.DeviceBuffer instance = DeviceBuffer.__new__(DeviceBuffer)
+    cdef DeviceBuffer instance = DeviceBuffer.__new__(DeviceBuffer)
     instance._deviceBuf = data
     instance._pitch = -1
     instance._size = size

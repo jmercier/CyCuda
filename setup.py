@@ -15,7 +15,7 @@ extensions = [ Extension("cycuda.cuda", ['src/cuda.pyx'],
                              library_dirs = [cuda_library_dir],
                              include_dirs = [cuda_include_dir, 'src'])]
 
-cycl_srcs = ['cycuda']
+cycuda_srcs = ['cycuda']
 
 setup(
     cmdclass = {'build_ext': build_ext},
