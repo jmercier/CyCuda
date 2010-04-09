@@ -1,10 +1,5 @@
-from cycuda cimport cuda
+cimport core as cuda
 cimport numpy as np
-
-from libcuda cimport *
-
-import cuda
-
 
 #################################################
 #
@@ -110,7 +105,7 @@ cpdef g2darray lena(np.dtype dtype = np.dtype("float32")):
 #
 #################################################
 
-cdef class gndarray(cuda.CudaObject):
+cdef class gndarray(CudaObject):
     cdef cuda.CudaBuffer _buf
     cdef tuple _shape
     cdef tuple _strides

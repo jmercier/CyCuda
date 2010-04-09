@@ -1,7 +1,8 @@
+from core cimport *
+from libcuda cimport *
+
 cdef class gndarray
 cdef class g2darray
-
-from libcuda cimport *
 
 cdef extern from "stdlib.h":
     cdef void free(void *ptr)

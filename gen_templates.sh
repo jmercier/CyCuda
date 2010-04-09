@@ -1,4 +1,4 @@
-FILES="cuda garray"
+FILES="core garray"
 
 for file in ${FILES}; 
 do

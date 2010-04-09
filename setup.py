@@ -6,11 +6,11 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
 
-extensions = [ Extension("cycuda.cuda", ['src/cuda.pyx'],
+extensions = [ Extension("cycuda.core", ['src/core.pyx'],
                          libraries = [cuda_library],
                          library_dirs = [cuda_library_dir],
                          include_dirs = [cuda_include_dir, 'src']),
-               Extension("cuda.garray", ['src/garray.pyx'],
+               Extension("cycuda.garray", ['src/garray.pyx'],
                              libraries = [cuda_library],
                              library_dirs = [cuda_library_dir],
                              include_dirs = [cuda_include_dir, 'src'])]
