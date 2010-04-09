@@ -1,0 +1,506 @@
+cimport cuda
+cimport cudagl
+
+import threading
+import struct
+
+
+cdef dict error_translation_table     = \
+    { CUDA_ERROR_INVALID_VALUE                  : CudaError("INVALID_VALUE"),
+      CUDA_ERROR_OUT_OF_MEMORY                  : CudaError("OUT_OF_MEMORY"),
+      CUDA_ERROR_NOT_INITIALIZED                : CudaError("NOT_INITIALIZED"),
+      CUDA_ERROR_DEINITIALIZED                  : CudaError("DEINITIALIZED"),
+      CUDA_ERROR_NO_DEVICE                      : CudaError("NO_DEVICE"),
+      CUDA_ERROR_INVALID_DEVICE                 : CudaError("INVALID_DEVICE"),
+      CUDA_ERROR_INVALID_IMAGE                  : CudaError("INVALID_IMAGE"),
+      CUDA_ERROR_INVALID_CONTEXT                : CudaError("INVALID_CONTEXT"),
+      CUDA_ERROR_CONTEXT_ALREADY_CURRENT        : CudaError("CONTEXT_ALREADY_CURRENT"),
+      CUDA_ERROR_MAP_FAILED                     : CudaError("MAP_FAILED"),
+      CUDA_ERROR_UNMAP_FAILED                   : CudaError("UNMAP_FAILED"),
+      CUDA_ERROR_ARRAY_IS_MAPPED                : CudaError("ARRAY_IS_MAPPED"),
+      CUDA_ERROR_ALREADY_MAPPED                 : CudaError("ALREADY_MAPPED"),
+      CUDA_ERROR_NO_BINARY_FOR_GPU              : CudaError("NO_BINARY_FOR_GPU"),
+      CUDA_ERROR_ALREADY_ACQUIRED               : CudaError("ALREADY_ACQUIRED"),
+      CUDA_ERROR_NOT_MAPPED                     : CudaError("NOT_MAPPED"),
+      CUDA_ERROR_NOT_MAPPED_AS_ARRAY            : CudaError("NOT_MAPPED_AS_ARRAY"),
+      CUDA_ERROR_NOT_MAPPED_AS_POINTER          : CudaError("NOT_MAPPED_AS_POINTER"),
+      CUDA_ERROR_INVALID_SOURCE                 : CudaError("INVALID_SOURCE"),
+      CUDA_ERROR_FILE_NOT_FOUND                 : CudaError("FILE_NOT_FOUND"),
+      CUDA_ERROR_INVALID_HANDLE                 : CudaError("INVALID_HANDLE"),
+      CUDA_ERROR_NOT_FOUND                      : CudaError("NOT_FOUND"),
+      CUDA_ERROR_NOT_READY                      : CudaError("NOT_READY"),
+      CUDA_ERROR_LAUNCH_FAILED                  : CudaError("LAUNCH_FAILED"),
+      CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES        : CudaError("LAUNCH_OUT_OF_RESOURCES"),
+      CUDA_ERROR_LAUNCH_TIMEOUT                 : CudaError("LAUNCH_TIMEOUT"),
+      CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING  : CudaError("LAUNCH_INCOMPATIBLE_TEXTURING"),
+      CUDA_ERROR_POINTER_IS_64BIT               : CudaError("POINTER_IS_64BIT"),
+      CUDA_ERROR_SIZE_IS_64BIT                  : CudaError("SIZE_IS_64BIT"),
+      CUDA_ERROR_UNKNOWN                        : CudaError("ERROR_UNKNOWN") }
+
+
+cdef CudaError translateError(CUresult error):
+    return error_translation_table[error]
+
+cdef class CudaObject:
+    def __init__(self):
+        raise TypeError("CUDA Object cannot be instantiate from Python")
+
+#######################################
+#
+# Generic FCT
+#
+#######################################
+
+cdef int _getDeviceAttribute(CUdevice_attribute att, CUdevice dev) except *:
+    cdef int val
+    CUDA_SAFE_CALL cuDeviceGetAttribute(&val, att, dev)
+    return val
+
+cdef int _getFunctionAttribute(CUfunction_attribute att, CUfunction hfunc) except *:
+    cdef int val
+    CUDA_SAFE_CALL cuFuncGetAttribute(&val, att, hfunc)
+    return val
+
+cdef inline CUaddress_mode _getTexRefAddressMode(CUtexref tex, int dim) except *:
+    cdef CUaddress_mode mode
+    CUDA_SAFE_CALL cuTexRefGetAddressMode(&mode, tex, dim)
+    return mode
+
+cdef inline void _setTexRefAddressMode(CUtexref tex, int dim, CUaddress_mode mode) except *:
+    CUDA_SAFE_CALL cuTexRefSetAddressMode(tex, dim, mode)
+
+cpdef CU_MEMHOSTALLOC_PORTABLE       = 0x01
+cpdef CU_MEMHOSTALLOC_DEVICEMAP      = 0x02
+cpdef CU_MEMHOSTALLOC_WRITECOMBINED  = 0x04
+
+DEF CU_TRSF_READ_AS_INTEGER  = 0
+DEF CU_TRSF_NORMALIZED_COORDINATES = 1
+
+DEF MAXNAMELENGTH = 100
+
+#######################################
+#
+# API
+#
+#######################################
+cpdef init(unsigned int flags = 0):
+    CUDA_SAFE_CALL cuInit(flags)
+
+
+cpdef Device getDevice(unsigned int id = 0):
+    cdef CUdevice ldev
+    CUDA_SAFE_CALL cuDeviceGet(&ldev, id)
+    cdef Device instance = Device.__new__(Device)
+    instance._dev = ldev
+    return instance
+
+
+cpdef int deviceCount():
+    cdef int count
+    CUDA_SAFE_CALL cuDeviceGetCount(&count)
+    return count
+
+
+cpdef ctxSynchronize():
+    CUDA_SAFE_CALL cuCtxSynchronize()
+
+
+cpdef tuple ctxMemInfo():
+    cdef unsigned int free, total
+    CUDA_SAFE_CALL cuMemGetInfo(&free, &total)
+    return (free, total)
+
+
+cpdef Context ctxCurrent():
+    cdef list cList = threading.current_thread().cudaCtx
+    return <Context>cList[-1]
+
+
+cpdef Context ctxPopCurrent():
+    cdef CUcontext ctx
+    CUDA_SAFE_CALL cuCtxPopCurrent(&ctx)
+    cdef list cList = threading.current_thread().cudaCtx
+    print cList
+    return <Context>cList.pop()
+
+
+cpdef int version():
+    cdef int val
+    CUDA_SAFE_CALL cuDriverGetVersion(&val)
+    return val
+
+
+cpdef DeviceBuffer allocate1D(tuple shape, unsigned int esize):
+    cdef int ndim = len(shape)
+    cdef unsigned int size = 1, s
+    cdef FCUdeviceptr data
+    for s in shape:
+        size *= s
+    CUDA_SAFE_CALL cuMemAlloc(&data, size * esize)
+    cdef cuda.DeviceBuffer instance = DeviceBuffer.__new__(DeviceBuffer)
+    instance._deviceBuf = data
+    instance._pitch = -1
+    instance._size = size
+    return instance
+
+cpdef DeviceBuffer allocate2D(tuple shape, unsigned int esize):
+    cdef unsigned int size = 1, ndim = len(shape), pitch
+    cdef unsigned int width = shape[1], height = shape[0]
+    cdef FCUdeviceptr data
+    if (ndim != 2):
+        raise ValueError("Pitched Memory Should be 2D")
+    CUDA_SAFE_CALL cuMemAllocPitch(&data, &pitch, width * esize, height, esize)
+    cdef DeviceBuffer instance = DeviceBuffer.__new__(DeviceBuffer)
+    instance._deviceBuf = data
+    instance.ctx = ctxCurrent()
+    instance._pitch = pitch
+    instance._size = pitch / esize * height
+    return instance
+
+
+cpdef HostBuffer allocateHost(tuple shape, unsigned int esize, unsigned int flags = CU_MEMHOSTALLOC_DEVICEMAP):
+    cdef unsigned int size = 1, ndim = len(shape), s
+    cdef void * data
+    for s in shape:
+        size *= s
+    cdef HostBuffer instance = HostBuffer.__new__(HostBuffer)
+    CUDA_SAFE_CALL cuMemAllocHost(&data, size * esize)
+    instance._hostBuf = data
+    instance.ctx = ctxCurrent()
+    instance._size = size
+    return instance
+
+
+cdef class LinearAllocator:
+    allocate = staticmethod(allocate1D)
+
+cdef class PitchedAllocator:
+    allocate = staticmethod(allocate2D)
+
+cdef class PinnedAllocator:
+    allocate = staticmethod(allocateHost)
+
+
+cpdef Event evtCreate(bint blocking = False):
+    cdef unsigned int flags = CU_EVENT_DEFAULT if not blocking else CU_EVENT_BLOCKING_SYNC
+    cdef CUevent evt
+    CUDA_SAFE_CALL cuEventCreate(&evt, flags)
+    cdef Event instance = Event.__new__(Event)
+    instance._evt = evt
+    instance.ctx = ctxCurrent()
+    return instance
+
+
+cpdef Stream streamCreate(unsigned int flags = 0):
+    cdef CUstream stream
+    CUDA_SAFE_CALL cuStreamCreate(&stream, flags)
+    cdef Stream instance = Stream.__new__(Stream)
+    instance._stream = stream
+    instance.ctx = ctxCurrent()
+    return instance
+
+cpdef Module loadModule(char *filename):
+    cdef CUmodule mod
+    CUDA_SAFE_CALL cuModuleLoad(&mod, filename)
+    cdef Module instance = Module.__new__(Module)
+    instance._mod = mod
+    instance.ctx = ctxCurrent()
+    return instance
+
+cpdef Module loadModuleEx(char *data):
+    cdef CUmodule mod
+    CUDA_SAFE_CALL cuModuleLoadDataEx(&mod, data, 0, NULL, NULL)
+    cdef Module instance = Module.__new__(Module)
+    instance._mod = mod
+    instance.ctx = ctxCurrent()
+    return instance
+
+cpdef TexRef texRefCreate():
+    cdef CUtexref tex
+    CUDA_SAFE_CALL cuTexRefCreate(&tex)
+    cdef TexRef instance = TexRef.__new__(TexRef)
+    instance._tex = tex
+    instance.ctx = ctxCurrent()
+    return instance
+
+
+cdef class Device(CudaObject):
+    cdef CUdevice _dev
+
+    property capability:
+        def __get__(self):
+            cdef int cMajor, cMinor
+            CUDA_SAFE_CALL cuDeviceComputeCapability(&cMajor, &cMinor, self._dev)
+            return (cMajor, cMinor)
+
+    property name:
+        def __get__(self):
+            cdef char name[MAXNAMELENGTH]
+            CUDA_SAFE_CALL cuDeviceGetName(name, MAXNAMELENGTH, self._dev)
+            return name
+
+    property maxBlockDim:
+        def __get__(self):
+            cdef int xblock, yblock, zblock
+            xblock = _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X, self._dev)
+            yblock = _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Y, self._dev)
+            zblock = _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Z, self._dev)
+            return xblock, yblock, zblock
+
+    property maxGridDim:
+        def __get__(self):
+            cdef int xgrid, ygrid, zgrid
+            xgrid = _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_X, self._dev)
+            ygrid = _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Y, self._dev)
+            zgrid = _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Z, self._dev)
+            return xgrid, ygrid, zgrid
+
+    property warpSize:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_WARP_SIZE, self._dev)
+
+    property maxPitch:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_PITCH, self._dev)
+
+    property clockRate:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_CLOCK_RATE, self._dev)
+
+    property multiprocessorCount:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, self._dev)
+
+    property kernelExecTimeout:
+        def __get__(self):
+            return 1 == _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_KERNEL_EXEC_TIMEOUT, self._dev)
+
+    property maxThreadsPerBlock:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK, self._dev)
+
+    property maxSharedMemoryPerBlock:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK, self._dev)
+
+    property totalConstantMemory:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY, self._dev)
+
+    property maxRegistersPerBlock:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, self._dev)
+
+    property textureAlignment:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT, self._dev)
+
+    property gpuOverlap:
+        def __get__(self):
+            return 1 == _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_GPU_OVERLAP, self._dev)
+
+    property integrated:
+        def __get__(self):
+            return 1 == _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_INTEGRATED, self._dev)
+
+    property canMapHostMemory:
+        def __get__(self):
+            return 1 == _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_CAN_MAP_HOST_MEMORY, self._dev)
+
+    property computeMode:
+        def __get__(self):
+            return _getDeviceAttribute(CU_DEVICE_ATTRIBUTE_COMPUTE_MODE, self._dev)
+
+    property totalMem:
+        def __get__(self):
+            cdef unsigned int val
+            CUDA_SAFE_CALL cuDeviceTotalMem(&val, self._dev)
+            return val
+
+    cdef Context _ctxCreate(self,  CUresult (*allocator)(CUcontext *, unsigned int, CUdevice), CUctx_flags flags):
+        cdef CUcontext lctx
+        CUDA_SAFE_CALL allocator(&lctx, flags, self._dev)
+
+        cdef Context instance = Context.__new__(Context)
+        instance._ctx = lctx
+
+        cThread = threading.current_thread()
+        if not hasattr(cThread, "cudaCtx"):
+            cThread.cudaCtx = []
+        cdef list tList = cThread.cudaCtx
+        tList.append(instance)
+        return instance
+
+    cpdef Context ctxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
+        return self._ctxCreate(cuCtxCreate, flags)
+
+    cpdef Context GLCtxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
+        return self._ctxCreate(cudagl.cuGLCtxCreate, flags)
+
+cdef class Context(CudaObject):
+    CUDA_DEALLOC cuCtxDestroy(self._ctx)
+
+    cpdef pushCurrent(self):
+        CUDA_SAFE_CALL cuCtxPushCurrent(self._ctx)
+        cdef list tList  = threading.current_thread().cudaCtx
+        tList.append(self)
+
+
+cdef class CudaBuffer(CudaObject):
+    property size:
+        def __get__(self):
+            return self._size
+
+
+cdef class DeviceBuffer(CudaBuffer):
+    CUDA_DEALLOC cuMemFree(self._deviceBuf)
+
+cdef class HostBuffer(CudaBuffer):
+    CUDA_DEALLOC cuMemFreeHost(self._hostBuf)
+
+
+cdef class Stream(CudaObject):
+    CUDA_DEALLOC cuStreamDestroy(self._stream)
+
+    cpdef bint query(self):
+        return CUDA_SUCCESS == cuStreamQuery(self._stream)
+
+    cpdef synchronize(self):
+        CUDA_SAFE_CALL cuStreamSynchronize(self._stream)
+
+
+cdef class Event(CudaObject):
+    cdef Context ctx
+    cdef CUevent _evt
+
+    CUDA_DEALLOC cuEventDestroy(self._evt)
+
+    cpdef record(self, Stream stream = None):
+        cdef CUstream cstream = stream._stream if stream is not None else <CUstream>0
+        CUDA_SAFE_CALL cuEventRecord(self._evt, cstream)
+
+    cpdef bint query(self):
+        return CUDA_SUCCESS == cuEventQuery(self._evt)
+
+    def __sub__(Event self not None, Event evt2 not None):
+        cdef float pMilliseconds
+        CUDA_SAFE_CALL cuEventElapsedTime(&pMilliseconds, evt2._evt, self._evt)
+        return pMilliseconds
+
+
+cdef class Module(CudaObject):
+    cdef Context ctx
+    cdef CUmodule _mod
+
+    CUDA_DEALLOC cuModuleUnload(self._mod)
+
+    cpdef Function getFunction(self, char *name):
+        cdef CUfunction fun
+        CUDA_SAFE_CALL cuModuleGetFunction(&fun, self._mod, name)
+        cdef Function instance = Function.__new__(Function)
+        instance.mod = self
+        instance._fun = fun
+        return instance
+
+    cpdef ModuleTexRef getTexref(self, char *name):
+        cdef CUtexref tex
+        CUDA_SAFE_CALL cuModuleGetTexRef(&tex, self._mod, name)
+        cdef ModuleTexRef instance = ModuleTexRef.__new__(ModuleTexRef)
+        instance.mod = self
+        instance._tex = tex
+        return instance
+
+
+cdef class Function(CudaObject):
+    cdef Module mod
+    cdef CUfunction _fun
+    cdef object _pstruct
+    cdef unsigned int _pstruct_size
+
+
+    property params:
+        def __get__(self):
+            return self._pstruct.format
+
+        def __set__(self, char *s):
+            self._pstruct = struct.Struct(s)
+            self._pstruct_size = self._pstruct.size
+            CUDA_SAFE_CALL cuParamSetSize(self._fun, self._pstruct_size)
+
+    property maxThreadPerBlock:
+        def __get__(self):
+            return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, self._fun)
+
+    property sharedSize:
+        def __get__(self):
+            return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, self._fun)
+        def __set__(self, unsigned int bytes):
+            CUDA_SAFE_CALL cuFuncSetSharedSize(self._fun, bytes)
+
+    property constSize:
+        def __get__(self):
+            return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES, self._fun)
+
+    property localSize:
+        def __get__(self):
+            return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, self._fun)
+
+    property numRegs:
+        def __get__(self):
+            return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_NUM_REGS, self._fun)
+
+    def prepareCall(self, *args):
+        s = self._pstruct.pack(*args)
+        cdef char *packed = s
+        CUDA_SAFE_CALL cuParamSetv(self._fun, 0, <void *>packed, self._pstruct_size)
+        return s
+
+
+    def __call__(self, *args, tuple block = (1, 1, 1), tuple grid = (1, 1)):
+        self.prepareCall(*args)
+        self.setBlockShape(block[0], block[1], block[2])
+        self.launchGrid(grid[0], grid[1])
+
+    cpdef launchGrid(self, int xgrid, int ygrid):
+        CUDA_SAFE_CALL cuLaunchGrid(self._fun, xgrid, ygrid)
+
+    cpdef setBlockShape(self, int xblock, int yblock, int zblock):
+        CUDA_SAFE_CALL cuFuncSetBlockShape(self._fun, xblock, yblock, zblock)
+
+    cpdef launchGridAsync(self, int xgrid, int ygrid, Stream s = None):
+        cdef CUstream stream = <CUstream>0 if s is None else s._stream
+        CUDA_SAFE_CALL cuLaunchGridAsync(self._fun, xgrid, ygrid, stream)
+
+
+cdef class TexRefBase(CudaObject):
+    property addressMode:
+        def __get__(self):
+            return _getTexRefAddressMode(self._tex, 0), _getTexRefAddressMode(self._tex, 1)
+        def __set__(self, tuple value):
+            for i, mode in enumerate(value):
+                _setTexRefAddressMode(self._tex, i, mode)
+
+    property filterMode:
+        def __get__(self):
+            cdef CUfilter_mode mode
+            CUDA_SAFE_CALL cuTexRefGetFilterMode(&mode, self._tex)
+            return mode
+        def __set__(self, CUfilter_mode mode):
+            CUDA_SAFE_CALL cuTexRefSetFilterMode(self._tex, mode)
+
+    property normalized:
+        def __get__(self):
+            cdef unsigned int flags
+            CUDA_SAFE_CALL cuTexRefGetFlags(&flags, self._tex)
+            return flags == CU_TRSF_NORMALIZED_COORDINATES
+        def __set__(self, bint value):
+            cdef unsigned int flags = CU_TRSF_NORMALIZED_COORDINATES if value else CU_TRSF_READ_AS_INTEGER
+            CUDA_SAFE_CALL cuTexRefSetFlags(self._tex, flags)
+
+
+cdef class TexRef(TexRefBase):
+    CUDA_DEALLOC cuTexRefDestroy(self._tex)
+
+
+
+
