@@ -1,0 +1,6 @@
+#opencl_include_dir = '/usr/local/stream/include'
+cuda_include_dir = '/usr/local/cuda/include'
+#opencl_library_dir = '/usr/local/stream/lib'
+cuda_library_dir = '/usr/local/cuda/lib'
+#opencl_library = 'atiocl64'
+cuda_li = 'cuda'
