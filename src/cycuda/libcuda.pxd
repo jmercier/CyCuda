@@ -1,4 +1,4 @@
-ctypedef void * FCUdeviceptr
+ctypedef unsigned long long FCUdeviceptr
 
 cdef extern from "cuda.h":
     ############################
@@ -36,8 +36,8 @@ cdef extern from "cuda.h":
         CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES       = 701
         CUDA_ERROR_LAUNCH_TIMEOUT                = 702
         CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING = 703
-        CUDA_ERROR_POINTER_IS_64BIT              = 800
-        CUDA_ERROR_SIZE_IS_64BIT                 = 801
+        #CUDA_ERROR_POINTER_IS_64BIT              = 800
+        #CUDA_ERROR_SIZE_IS_64BIT                 = 801
         CUDA_ERROR_UNKNOWN                       = 999
 
     cdef enum CUdevice_attribute "CUdevice_attribute_enum":
@@ -149,7 +149,7 @@ cdef extern from "cuda.h":
     ctypedef void * CUmodule
     ctypedef void * CUfunction
     ctypedef void * CUtexref
-    #ctypedef void * FCUdeviceptr
+    ctypedef void * CUdeviceptr
 
     ctypedef struct CUDA_MEMCPY2D:
         unsigned int srcXInBytes, srcY
@@ -202,7 +202,7 @@ cdef extern from "cuda.h":
     cdef CUresult cuDeviceComputeCapability(int *, int *, CUdevice) nogil
     cdef CUresult cuDeviceGetCount(int *) nogil
     cdef CUresult cuDeviceGetName(char *, int, CUdevice) nogil
-    cdef CUresult cuDeviceTotalMem(unsigned int *, CUdevice) nogil
+    cdef CUresult cuDeviceTotalMem(size_t *, CUdevice) nogil
     cdef CUresult cuDeviceGetAttribute(int *, CUdevice_attribute, CUdevice) nogil
 
     ############################
@@ -212,11 +212,11 @@ cdef extern from "cuda.h":
     ############################
     cdef CUresult cuMemFree(FCUdeviceptr) nogil
     cdef CUresult cuMemAlloc(FCUdeviceptr *, unsigned int) nogil
-    cdef CUresult cuMemAllocPitch(FCUdeviceptr *, unsigned int *, unsigned int, unsigned int, unsigned int) nogil
+    cdef CUresult cuMemAllocPitch(FCUdeviceptr *, size_t *, size_t, size_t, unsigned int) nogil
     cdef CUresult cuMemAllocHost(void **, unsigned int) nogil
     cdef CUresult cuMemFreeHost(void *) nogil
     cdef CUresult cuMemHostGetDevicePointer (FCUdeviceptr *,void *, unsigned int) nogil
-    cdef CUresult cuMemGetInfo(unsigned int *, unsigned int *) nogil
+    cdef CUresult cuMemGetInfo(size_t *, size_t *) nogil
     cdef CUresult cuMemcpy2D(CUDA_MEMCPY2D *pCopy)
     cdef CUresult cuMemcpy2DAsync(CUDA_MEMCPY2D *pCopy, CUstream)
     cdef CUresult cuMemcpyDtoD (FCUdeviceptr, FCUdeviceptr, unsigned int)

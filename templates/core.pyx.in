@@ -32,8 +32,8 @@ cdef dict error_translation_table     = \
       CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES        : CudaError("LAUNCH_OUT_OF_RESOURCES"),
       CUDA_ERROR_LAUNCH_TIMEOUT                 : CudaError("LAUNCH_TIMEOUT"),
       CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING  : CudaError("LAUNCH_INCOMPATIBLE_TEXTURING"),
-      CUDA_ERROR_POINTER_IS_64BIT               : CudaError("POINTER_IS_64BIT"),
-      CUDA_ERROR_SIZE_IS_64BIT                  : CudaError("SIZE_IS_64BIT"),
+#      CUDA_ERROR_POINTER_IS_64BIT               : CudaError("POINTER_IS_64BIT"),
+#      CUDA_ERROR_SIZE_IS_64BIT                  : CudaError("SIZE_IS_64BIT"),
       CUDA_ERROR_UNKNOWN                        : CudaError("ERROR_UNKNOWN") }
 
 
@@ -105,7 +105,7 @@ cpdef ctxSynchronize():
 
 
 cpdef tuple ctxMemInfo():
-    cdef unsigned int free, total
+    cdef size_t free, total
     CUDA_SAFE_CALL cuMemGetInfo(&free, &total)
     return (free, total)
 
@@ -143,8 +143,8 @@ cpdef DeviceBuffer allocate1D(tuple shape, unsigned int esize):
     return instance
 
 cpdef DeviceBuffer allocate2D(tuple shape, unsigned int esize):
-    cdef unsigned int size = 1, ndim = len(shape), pitch
-    cdef unsigned int width = shape[1], height = shape[0]
+    cdef size_t size = 1, ndim = len(shape), pitch
+    cdef size_t width = shape[1], height = shape[0]
     cdef FCUdeviceptr data
     if (ndim != 2):
         raise ValueError("Pitched Memory Should be 2D")
@@ -224,8 +224,6 @@ cpdef TexRef texRefCreate():
 
 
 cdef class Device(CudaObject):
-    cdef CUdevice _dev
-
     property capability:
         def __get__(self):
             cdef int cMajor, cMinor
@@ -312,7 +310,7 @@ cdef class Device(CudaObject):
 
     property totalMem:
         def __get__(self):
-            cdef unsigned int val
+            cdef size_t val
             CUDA_SAFE_CALL cuDeviceTotalMem(&val, self._dev)
             return val
 
@@ -330,11 +328,12 @@ cdef class Device(CudaObject):
         tList.append(instance)
         return instance
 
-    cpdef Context ctxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
+    def ctxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
         return self._ctxCreate(cuCtxCreate, flags)
 
-    cpdef Context GLCtxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
+    def GLCtxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
         return self._ctxCreate(cudagl.cuGLCtxCreate, flags)
+
 
 cdef class Context(CudaObject):
     CUDA_DEALLOC cuCtxDestroy(self._ctx)
@@ -368,13 +367,13 @@ cdef class Stream(CudaObject):
         CUDA_SAFE_CALL cuStreamSynchronize(self._stream)
 
 
-cdef class Event(CudaObject):
-    cdef Context ctx
-    cdef CUevent _evt
 
+
+
+cdef class Event(CudaObject):
     CUDA_DEALLOC cuEventDestroy(self._evt)
 
-    cpdef record(self, Stream stream = None):
+    cpdef record(self, Stream stream):
         cdef CUstream cstream = stream._stream if stream is not None else <CUstream>0
         CUDA_SAFE_CALL cuEventRecord(self._evt, cstream)
 
@@ -388,9 +387,6 @@ cdef class Event(CudaObject):
 
 
 cdef class Module(CudaObject):
-    cdef Context ctx
-    cdef CUmodule _mod
-
     CUDA_DEALLOC cuModuleUnload(self._mod)
 
     cpdef Function getFunction(self, char *name):
@@ -411,12 +407,6 @@ cdef class Module(CudaObject):
 
 
 cdef class Function(CudaObject):
-    cdef Module mod
-    cdef CUfunction _fun
-    cdef object _pstruct
-    cdef unsigned int _pstruct_size
-
-
     property params:
         def __get__(self):
             return self._pstruct.format
@@ -466,9 +456,14 @@ cdef class Function(CudaObject):
     cpdef setBlockShape(self, int xblock, int yblock, int zblock):
         CUDA_SAFE_CALL cuFuncSetBlockShape(self._fun, xblock, yblock, zblock)
 
-    cpdef launchGridAsync(self, int xgrid, int ygrid, Stream s = None):
+    cdef void __launchGridAsync__(self, int xgrid, int ygrid, Stream s):
         cdef CUstream stream = <CUstream>0 if s is None else s._stream
         CUDA_SAFE_CALL cuLaunchGridAsync(self._fun, xgrid, ygrid, stream)
+
+
+    def launchGridAsync(self, int xgrid, int ygrid, Stream s = None):
+        self.__launchGridAsync__(xgrid, ygrid, s)
+
 
 
 cdef class TexRefBase(CudaObject):
