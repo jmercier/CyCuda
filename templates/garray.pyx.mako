@@ -6,6 +6,7 @@ cimport numpy as np
 #  Helper code (C only)
 #
 #################################################
+"""
 cdef void setHostSrc(CUDA_MEMCPY2D *st, np.ndarray ary):
         st.srcPitch = ary.strides[0]
         st.srcXInBytes = st.srcY = 0
@@ -105,16 +106,7 @@ cpdef g2darray lena(np.dtype dtype = np.dtype("float32")):
 #
 #################################################
 
-cdef class gndarray(CudaObject):
-    cdef cuda.CudaBuffer _buf
-    cdef tuple _shape
-    cdef tuple _strides
-    cdef tuple _offset
-    cdef np.dtype _dtype
-    cdef bint _contiguous
-    cdef unsigned int _ndim
-    cdef garray_st _arrayDescription
-
+cdef class gndarray(object):
     cdef bint checkDeviceCompatibility(self, gndarray ary):
         if self._ndim != ary._ndim:
             return False
@@ -142,7 +134,7 @@ cdef class gndarray(CudaObject):
             size *= self._shape[i]
         return size
 
-    cdef inline FCUdeviceptr getDevicePtr(self):
+    cdef inline CUdeviceptr getDevicePtr(self):
         return <char *>self._buf._deviceBuf + <int>self._offset[0] * self._dtype.itemsize
 
     property shape:
@@ -188,7 +180,7 @@ cdef class gndarray(CudaObject):
         if not self.checkHostCompatibility(ary):
             raise ValueError("Incompatible array")
         cdef int size = self.getSize() * self._dtype.itemsize
-        CUDA_SAFE_CALL_EXT cuMemcpyHtoD(self.getDevicePtr(), ary.data, size)
+        cuMemcpyHtoD(self.getDevicePtr(), ary.data, size)
         return self
 
     cpdef gndarray set_async(self, np.ndarray ary, cuda.Stream stream = None):
@@ -196,14 +188,14 @@ cdef class gndarray(CudaObject):
         if not self.checkHostCompatibility(ary):
             raise ValueError("Incompatible array")
         cdef int size = self.getSize() * self._dtype.itemsize
-        CUDA_SAFE_CALL_EXT cuMemcpyHtoDAsync(self.getDevicePtr(), ary.data, size, st)
+        cuMemcpyHtoDAsync(self.getDevicePtr(), ary.data, size, st)
         return self
 
     cpdef np.ndarray get(self, np.ndarray ary):
         if not self.checkHostCompatibility(ary):
             raise ValueError("Incompatible array")
         cdef int size = self.getSize() * self._dtype.itemsize
-        CUDA_SAFE_CALL_EXT cuMemcpyDtoH(ary.data, self.getDevicePtr(), size)
+        cuMemcpyDtoH(ary.data, self.getDevicePtr(), size)
         return ary
 
     cpdef np.ndarray get_async(self, np.ndarray ary, cuda.Stream stream = None):
@@ -211,14 +203,14 @@ cdef class gndarray(CudaObject):
         if not self.checkHostCompatibility(ary):
             raise ValueError("Incompatible array")
         cdef int size = self.getSize() * self._dtype.itemsize
-        CUDA_SAFE_CALL_EXT cuMemcpyDtoHAsync(ary.data, self.getDevicePtr(), size, st)
+        cuMemcpyDtoHAsync(ary.data, self.getDevicePtr(), size, st)
         return ary
 
     cpdef gndarray copy(self, gndarray ary):
         if not self.checkDeviceCompatibility(ary):
             raise ValueError("Incompatible array")
         cdef int size = self.getSize() * self._dtype.itemsize
-        CUDA_SAFE_CALL_EXT cuMemcpyDtoD(ary.getDevicePtr(), self.getDevicePtr(), size)
+        cuMemcpyDtoD(ary.getDevicePtr(), self.getDevicePtr(), size)
         return ary
 
     cpdef gndarray copy_async(self, gndarray ary, cuda.Stream stream = None):
@@ -226,7 +218,7 @@ cdef class gndarray(CudaObject):
         if not self.checkDeviceCompatibility(ary):
             raise ValueError("Incompatible array")
         cdef int size = self.getSize() * self._dtype.itemsize
-        CUDA_SAFE_CALL_EXT cuMemcpyDtoDAsync(ary.getDevicePtr(), self.getDevicePtr(), size, st)
+        cuMemcpyDtoDAsync(ary.getDevicePtr(), self.getDevicePtr(), size, st)
         return ary
 
     cdef inline bint bound_checking(self, int *start, int *stop, unsigned int axis):
@@ -258,8 +250,8 @@ cdef class g2darray(gndarray):
         arrdesc.Width = self._imageDescription.shape[1]
         arrdesc.NumChannels = 1
         arrdesc.Format = dtype_to_texref_format[self._dtype]
-        cdef FCUdeviceptr address = <int>self._offset[1] * self._dtype.itemsize + self._buf._deviceBuf
-        CUDA_SAFE_CALL_EXT cuTexRefSetAddress2D(ref._tex, &arrdesc, address, self._desc.strides[0])
+        cdef CUdeviceptr address = <int>self._offset[1] * self._dtype.itemsize + self._buf._deviceBuf
+        cuTexRefSetAddress2D(ref._tex, &arrdesc, address, self._desc.strides[0])
         return ref
 
     cpdef cuda.TexRef makeTexRef(self):
@@ -271,7 +263,7 @@ cdef class g2darray(gndarray):
         cdef CUDA_MEMCPY2D st
         setDeviceSrc(&st, self)
         setDeviceDst(&st, ary)
-        CUDA_SAFE_CALL_EXT cuMemcpy2D(&st)
+        cuMemcpy2D(&st)
         return ary
 
 
@@ -282,7 +274,7 @@ cdef class g2darray(gndarray):
         cdef CUDA_MEMCPY2D st
         setDeviceSrc(&st, self)
         setDeviceDst(&st, ary)
-        CUDA_SAFE_CALL_EXT cuMemcpy2DAsync(&st, s)
+        cuMemcpy2DAsync(&st, s)
         return ary
 
 
@@ -292,7 +284,7 @@ cdef class g2darray(gndarray):
         cdef CUDA_MEMCPY2D st
         setDeviceSrc(&st, self)
         setHostDst(&st, ary)
-        CUDA_SAFE_CALL_EXT cuMemcpy2D(&st)
+        cuMemcpy2D(&st)
         return ary
 
     cpdef np.ndarray get_async(self, np.ndarray ary, cuda.Stream stream = None):
@@ -302,7 +294,7 @@ cdef class g2darray(gndarray):
         cdef CUDA_MEMCPY2D st
         setDeviceSrc(&st, self)
         setHostDst(&st, ary)
-        CUDA_SAFE_CALL_EXT cuMemcpy2DAsync(&st, s)
+        cuMemcpy2DAsync(&st, s)
         return ary
 
     cpdef gndarray set(self, np.ndarray ary):
@@ -311,7 +303,7 @@ cdef class g2darray(gndarray):
         cdef CUDA_MEMCPY2D st
         setHostSrc(&st, ary)
         setDeviceDst(&st, self)
-        CUDA_SAFE_CALL_EXT cuMemcpy2D(&st)
+        cuMemcpy2D(&st)
         return self
 
     cpdef gndarray set_async(self, np.ndarray ary, cuda.Stream stream = None):
@@ -321,7 +313,7 @@ cdef class g2darray(gndarray):
         cdef CUDA_MEMCPY2D st
         setHostSrc(&st, ary)
         setDeviceDst(&st, self)
-        CUDA_SAFE_CALL_EXT cuMemcpy2DAsync(&st, s)
+        cuMemcpy2DAsync(&st, s)
         return self
 
     cdef object getRawImageDescription(self):
@@ -343,9 +335,19 @@ cdef class g2darray(gndarray):
             return self.getRawArrayDescription()
 
 
+"""
+
+cimport numpy as np
+import numpy as np
+
+cpdef object page_locked(tuple shape, np.dtype dtype = np.dtype('float23')):
+    return None
 
 
-
+#
+# vim: filetype=pyrex
+#
+#
 
 
 

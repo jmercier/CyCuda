@@ -5,6 +5,14 @@ cdef extern from "cuda.h":
     #
     ############################
 
+    ctypedef enum:
+        CU_MEMHOSTALLOC_PORTABLE
+        CU_MEMHOSTALLOC_DEVICEMAP
+        CU_MEMHOSTALLOC_WRITECOMBINED
+
+        CU_TRSF_READ_AS_INTEGER
+        CU_TRSF_NORMALIZED_COORDINATES
+
     ctypedef enum CUresult:
         CUDA_SUCCESS
         CUDA_ERROR_INVALID_VALUE

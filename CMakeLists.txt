@@ -1,0 +1,47 @@
+cmake_minimum_required (VERSION 2.6)
+
+project (CyCucda)
+
+set (CyCuda_VERSION_MAJOR 0)
+set (CyCuda_VERSION_MINOR 5)
+
+
+set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+set (CyCuda_TEMPLATE_DIR ${PROJECT_SOURCE_DIR}/templates)
+set (CyCuda_TEMPLATE_COMMAND ${PROJECT_SOURCE_DIR}/scripts/gen_template.py ${INPUT} ${OUTPUT})
+set (CyCuda_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
+
+
+FIND_PACKAGE(PythonInterp)
+FIND_PACKAGE(PythonLibs)
+set (CMAKE_C_FLAGS "-O3 -DNDEBUG")
+
+FIND_PACKAGE(Mako)
+FIND_PACKAGE(Cython)
+FIND_PACKAGE(CUDA)
+
+#MAKO_ADD_MODULE("fft.pyx")
+MAKO_ADD_MODULE("core.pyx")
+MAKO_ADD_MODULE("garray.pyx")
+
+set (CYTHON_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/src/cycuda)
+
+CYTHON_ADD_MODULE(garray garray.c)
+CYTHON_ADD_MODULE(core core.c)
+
+TARGET_LINK_LIBRARIES(core "cuda" ${CUDA_LIBRARIES})
+SET_TARGET_PROPERTIES(core PROPERTIES COMPILE_FLAGS "-I${PYTHON_INCLUDE_DIR} -fno-strict-aliasing -fwrapv -fPIC")
+SET_TARGET_PROPERTIES(core PROPERTIES LINK_FLAGS "-L/usr/lib/nvidia-current")
+
+TARGET_LINK_LIBRARIES(garray "cuda" ${CUDA_LIBRARIES})
+SET_TARGET_PROPERTIES(garray PROPERTIES COMPILE_FLAGS "-I${PYTHON_INCLUDE_DIR} -fno-strict-aliasing -fwrapv -fPIC")
+SET_TARGET_PROPERTIES(garray PROPERTIES LINK_FLAGS "-L/usr/lib/nvidia-current")
+
+#CYTHON_ADD_MODULE("garray")
+
+#ADD_CUSTOM_TARGET(main ALL echo 'test target' DEPENDS core.c )
+#set(CMAKE_SHARED_LIBRARY_PREFIX "")
+#ADD_LIBRARY(core SHARED core.c)
+
+
