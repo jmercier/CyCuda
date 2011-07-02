@@ -9,11 +9,13 @@ from Cython.Distutils import build_ext
 extensions = [ Extension("cycuda.core", ['src/core.pyx'],
                          libraries = [cuda_library],
                          library_dirs = [cuda_library_dir],
-                         include_dirs = [cuda_include_dir, 'src']),
-               Extension("cycuda.garray", ['src/garray.pyx'],
-                             libraries = [cuda_library],
-                             library_dirs = [cuda_library_dir],
-                             include_dirs = [cuda_include_dir, 'src'])]
+                         include_dirs = [cuda_include_dir, 'src'])]
+"""
+Extension("cycuda.garray", ['src/garray.pyx'],
+libraries = [cuda_library],
+library_dirs = [cuda_library_dir],
+include_dirs = [cuda_include_dir, 'src'])
+"""
 
 cycuda_srcs = ['cycuda']
 

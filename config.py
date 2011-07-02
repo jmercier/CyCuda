@@ -1,6 +1,6 @@
 #opencl_include_dir = '/usr/local/stream/include'
-cuda_include_dir = '/usr/local/cuda/include'
+cuda_include_dir = '/usr/include/cuda'
 #opencl_library_dir = '/usr/local/stream/lib'
-cuda_library_dir = '/usr/local/cuda/lib'
+cuda_library_dir = '/usr/lib/nvidia-current'
 #opencl_library = 'atiocl64'
 cuda_library = 'cuda'

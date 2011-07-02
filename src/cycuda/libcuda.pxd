@@ -1,5 +1,3 @@
-ctypedef unsigned long long FCUdeviceptr
-
 cdef extern from "cuda.h":
     ############################
     #
@@ -7,119 +5,156 @@ cdef extern from "cuda.h":
     #
     ############################
 
-    cdef enum CUresult "cudaError_enum":
-        CUDA_SUCCESS                             = 0
-        CUDA_ERROR_INVALID_VALUE                 = 1
-        CUDA_ERROR_OUT_OF_MEMORY                 = 2
-        CUDA_ERROR_NOT_INITIALIZED               = 3
-        CUDA_ERROR_DEINITIALIZED                 = 4
-        CUDA_ERROR_NO_DEVICE                     = 100
-        CUDA_ERROR_INVALID_DEVICE                = 101
-        CUDA_ERROR_INVALID_IMAGE                 = 200
-        CUDA_ERROR_INVALID_CONTEXT               = 201
-        CUDA_ERROR_CONTEXT_ALREADY_CURRENT       = 202
-        CUDA_ERROR_MAP_FAILED                    = 205
-        CUDA_ERROR_UNMAP_FAILED                  = 206
-        CUDA_ERROR_ARRAY_IS_MAPPED               = 207
-        CUDA_ERROR_ALREADY_MAPPED                = 208
-        CUDA_ERROR_NO_BINARY_FOR_GPU             = 209
-        CUDA_ERROR_ALREADY_ACQUIRED              = 210
-        CUDA_ERROR_NOT_MAPPED                    = 211
-        CUDA_ERROR_NOT_MAPPED_AS_ARRAY           = 212
-        CUDA_ERROR_NOT_MAPPED_AS_POINTER         = 213
-        CUDA_ERROR_INVALID_SOURCE                = 300
-        CUDA_ERROR_FILE_NOT_FOUND                = 301
-        CUDA_ERROR_INVALID_HANDLE                = 400
-        CUDA_ERROR_NOT_FOUND                     = 500
-        CUDA_ERROR_NOT_READY                     = 600
-        CUDA_ERROR_LAUNCH_FAILED                 = 700
-        CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES       = 701
-        CUDA_ERROR_LAUNCH_TIMEOUT                = 702
-        CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING = 703
-        #CUDA_ERROR_POINTER_IS_64BIT              = 800
-        #CUDA_ERROR_SIZE_IS_64BIT                 = 801
-        CUDA_ERROR_UNKNOWN                       = 999
+    ctypedef enum CUresult:
+        CUDA_SUCCESS
+        CUDA_ERROR_INVALID_VALUE
+        CUDA_ERROR_OUT_OF_MEMORY
+        CUDA_ERROR_NOT_INITIALIZED
+        CUDA_ERROR_DEINITIALIZED
+        CUDA_ERROR_PROFILER_DISABLED
+        CUDA_ERROR_PROFILER_NOT_INITIALIZED
+        CUDA_ERROR_PROFILER_ALREADY_STARTED
+        CUDA_ERROR_PROFILER_ALREADY_STOPPED
+        CUDA_ERROR_NO_DEVICE
+        CUDA_ERROR_INVALID_DEVICE
+        CUDA_ERROR_INVALID_IMAGE
+        CUDA_ERROR_INVALID_CONTEXT
+        CUDA_ERROR_CONTEXT_ALREADY_CURRENT
+        CUDA_ERROR_MAP_FAILED
+        CUDA_ERROR_UNMAP_FAILED
+        CUDA_ERROR_ARRAY_IS_MAPPED
+        CUDA_ERROR_ALREADY_MAPPED
+        CUDA_ERROR_NO_BINARY_FOR_GPU
+        CUDA_ERROR_ALREADY_ACQUIRED
+        CUDA_ERROR_NOT_MAPPED
+        CUDA_ERROR_NOT_MAPPED_AS_ARRAY
+        CUDA_ERROR_NOT_MAPPED_AS_POINTER
+        CUDA_ERROR_ECC_UNCORRECTABLE
+        CUDA_ERROR_UNSUPPORTED_LIMIT
+        CUDA_ERROR_CONTEXT_ALREADY_IN_USE
+        CUDA_ERROR_INVALID_SOURCE
+        CUDA_ERROR_FILE_NOT_FOUND
+        CUDA_ERROR_SHARED_OBJECT_SYMBOL_NOT_FOUND
+        CUDA_ERROR_SHARED_OBJECT_INIT_FAILED
+        CUDA_ERROR_OPERATING_SYSTEM
+        CUDA_ERROR_INVALID_HANDLE
+        CUDA_ERROR_NOT_FOUND
+        CUDA_ERROR_NOT_READY
+        CUDA_ERROR_LAUNCH_FAILED
+        CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES
+        CUDA_ERROR_LAUNCH_TIMEOUT
+        CUDA_ERROR_LAUNCH_INCOMPATIBLE_TEXTURING
+        CUDA_ERROR_PEER_ACCESS_ALREADY_ENABLED
+        CUDA_ERROR_PEER_ACCESS_NOT_ENABLED
+        CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE
+        CUDA_ERROR_CONTEXT_IS_DESTROYED
+        CUDA_ERROR_UNKNOWN
 
-    cdef enum CUdevice_attribute "CUdevice_attribute_enum":
-        CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK             = 1
-        CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X                   = 2
-        CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Y                   = 3
-        CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Z                   = 4
-        CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_X                    = 5
-        CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Y                    = 6
-        CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Z                    = 7
-        CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK       = 8
-        CU_DEVICE_ATTRIBUTE_SHARED_MEMORY_PER_BLOCK           = 8
-        CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY             = 9
-        CU_DEVICE_ATTRIBUTE_WARP_SIZE                         = 10
-        CU_DEVICE_ATTRIBUTE_MAX_PITCH                         = 11
-        CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK           = 12
-        CU_DEVICE_ATTRIBUTE_REGISTERS_PER_BLOCK               = 12
-        CU_DEVICE_ATTRIBUTE_CLOCK_RATE                        = 13
-        CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT                 = 14
-        CU_DEVICE_ATTRIBUTE_GPU_OVERLAP                       = 15
-        CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT              = 16
-        CU_DEVICE_ATTRIBUTE_KERNEL_EXEC_TIMEOUT               = 17
-        CU_DEVICE_ATTRIBUTE_INTEGRATED                        = 18
-        CU_DEVICE_ATTRIBUTE_CAN_MAP_HOST_MEMORY               = 19
-        CU_DEVICE_ATTRIBUTE_COMPUTE_MODE                      = 20
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_WIDTH           = 21
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_WIDTH           = 22
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_HEIGHT          = 23
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_WIDTH           = 24
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_HEIGHT          = 25
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_DEPTH           = 26
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_WIDTH     = 27
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_HEIGHT    = 28
-        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_NUMSLICES = 29
+    ctypedef enum CUdevice_attribute:
+        CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK
+        CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X
+        CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Y
+        CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_Z
+        CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_X
+        CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Y
+        CU_DEVICE_ATTRIBUTE_MAX_GRID_DIM_Z
+        CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK
+        CU_DEVICE_ATTRIBUTE_SHARED_MEMORY_PER_BLOCK
+        CU_DEVICE_ATTRIBUTE_TOTAL_CONSTANT_MEMORY
+        CU_DEVICE_ATTRIBUTE_WARP_SIZE
+        CU_DEVICE_ATTRIBUTE_MAX_PITCH
+        CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK
+        CU_DEVICE_ATTRIBUTE_REGISTERS_PER_BLOCK
+        CU_DEVICE_ATTRIBUTE_CLOCK_RATE
+        CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT
+        CU_DEVICE_ATTRIBUTE_GPU_OVERLAP
+        CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT
+        CU_DEVICE_ATTRIBUTE_KERNEL_EXEC_TIMEOUT
+        CU_DEVICE_ATTRIBUTE_INTEGRATED
+        CU_DEVICE_ATTRIBUTE_CAN_MAP_HOST_MEMORY
+        CU_DEVICE_ATTRIBUTE_COMPUTE_MODE
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_WIDTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_WIDTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_HEIGHT
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_WIDTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_HEIGHT
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE3D_DEPTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_LAYERED_WIDTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_LAYERED_HEIGHT
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_LAYERED_LAYERS
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_WIDTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_HEIGHT
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE2D_ARRAY_NUMSLICES
+        CU_DEVICE_ATTRIBUTE_SURFACE_ALIGNMENT
+        CU_DEVICE_ATTRIBUTE_CONCURRENT_KERNELS
+        CU_DEVICE_ATTRIBUTE_ECC_ENABLED
+        CU_DEVICE_ATTRIBUTE_PCI_BUS_ID
+        CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID
+        CU_DEVICE_ATTRIBUTE_TCC_DRIVER
+        CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE
+        CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH
+        CU_DEVICE_ATTRIBUTE_L2_CACHE_SIZE
+        CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR
+        CU_DEVICE_ATTRIBUTE_ASYNC_ENGINE_COUNT
+        CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_LAYERED_WIDTH
+        CU_DEVICE_ATTRIBUTE_MAXIMUM_TEXTURE1D_LAYERED_LAYERS
+        CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID
 
-    cdef enum CUfunction_attribute "CUfunction_attribute_enum":
-        CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK = 1
-        CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES     = 2
-        CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES      = 3
-        CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES      = 4
-        CU_FUNC_ATTRIBUTE_NUM_REGS              = 5
+    ctypedef enum CUfunction_attribute:
+        CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK
+        CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES
+        CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES
+        CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES
+        CU_FUNC_ATTRIBUTE_NUM_REGS
+        CU_FUNC_ATTRIBUTE_PTX_VERSION
+        CU_FUNC_ATTRIBUTE_BINARY_VERSION
+        CU_FUNC_ATTRIBUTE_MAX
 
-    cdef enum CUctx_flags "CUctx_flags_enum":
-        CU_CTX_SCHED_AUTO         = 0
-        CU_CTX_SCHED_SPIN         = 1
-        CU_CTX_SCHED_YIELD        = 2
-        CU_CTX_SCHED_MASK         = 0x3
-        CU_CTX_BLOCKING_SYNC      = 4
-        CU_CTX_MAP_HOST           = 8
-        CU_CTX_LMEM_RESIZE_TO_MAX = 16
-        CU_CTX_FLAGS_MASK         = 0x1f
+    ctypedef enum CUctx_flags:
+        CU_CTX_SCHED_AUTO
+        CU_CTX_SCHED_SPIN
+        CU_CTX_SCHED_YIELD
+        CU_CTX_SCHED_BLOCKING_SYNC
+        CU_CTX_BLOCKING_SYNC
+        CU_CTX_SCHED_MASK
+        CU_CTX_MAP_HOST
+        CU_CTX_LMEM_RESIZE_TO_MAX
+        CU_CTX_FLAGS_MASK
 
-    cdef enum CUarray_format "CUarray_format_enum":
-        CU_AD_FORMAT_UNSIGNED_INT8  = 0x01
-        CU_AD_FORMAT_UNSIGNED_INT16 = 0x02
-        CU_AD_FORMAT_UNSIGNED_INT32 = 0x03
-        CU_AD_FORMAT_SIGNED_INT8    = 0x08
-        CU_AD_FORMAT_SIGNED_INT16   = 0x09
-        CU_AD_FORMAT_SIGNED_INT32   = 0x0a
-        CU_AD_FORMAT_HALF           = 0x10
-        CU_AD_FORMAT_FLOAT          = 0x20
+    ctypedef enum CUarray_format:
+        CU_AD_FORMAT_UNSIGNED_INT8
+        CU_AD_FORMAT_UNSIGNED_INT16
+        CU_AD_FORMAT_UNSIGNED_INT32
+        CU_AD_FORMAT_SIGNED_INT8
+        CU_AD_FORMAT_SIGNED_INT16
+        CU_AD_FORMAT_SIGNED_INT32
+        CU_AD_FORMAT_HALF
+        CU_AD_FORMAT_FLOAT
 
-    cdef enum CUaddress_mode "CUaddress_mode_enum":
-        CU_TR_ADDRESS_MODE_WRAP   = 0
-        CU_TR_ADDRESS_MODE_CLAMP  = 1
-        CU_TR_ADDRESS_MODE_MIRROR = 2
+    ctypedef enum CUaddress_mode:
+        CU_TR_ADDRESS_MODE_WRAP
+        CU_TR_ADDRESS_MODE_CLAMP
+        CU_TR_ADDRESS_MODE_MIRROR
+        CU_TR_ADDRESS_MODE_BORDER
 
-    cdef enum CUfilter_mode "CUfilter_mode_enum":
-        CU_TR_FILTER_MODE_POINT  = 0
-        CU_TR_FILTER_MODE_LINEAR = 1
+    ctypedef enum CUfilter_mode:
+        CU_TR_FILTER_MODE_POINT
+        CU_TR_FILTER_MODE_LINEAR
 
-    cdef enum CUmemorytype "CUmemorytype_enum":
-        CU_MEMORYTYPE_HOST   = 0x01
-        CU_MEMORYTYPE_DEVICE = 0x02
-        CU_MEMORYTYPE_ARRAY  = 0x03
+    ctypedef enum CUmemorytype:
+        CU_MEMORYTYPE_HOST
+        CU_MEMORYTYPE_DEVICE
+        CU_MEMORYTYPE_ARRAY
+        CU_MEMORYTYPE_UNIFIED
 
-    cdef enum CUevent_flags "CUevent_flags_enum":
-        CU_EVENT_DEFAULT       = 0
-        CU_EVENT_BLOCKING_SYNC = 1
+    ctypedef enum CUevent_flags:
+        CU_EVENT_DEFAULT
+        CU_EVENT_BLOCKING_SYNC
+        CU_EVENT_DISABLE_TIMING
 
-    cdef enum CUjit_option "CUjit_option_enum":
-        CU_JIT_MAX_REGISTER = 0
+    ctypedef enum CUjit_option:
+        CU_JIT_MAX_REGISTER
         CU_JIT_THREADS_PER_BLOCK
         CU_JIT_WALL_TIME
         CU_JIT_INFO_LOG_BUFFER
@@ -131,18 +166,21 @@ cdef extern from "cuda.h":
         CU_JIT_TARGET
         CU_JIT_FALLBACK_STRATEGY
 
-    cdef enum CUaddress_mode "CUaddress_mode_enum":
-        CU_TR_ADDRESS_MODE_WRAP   = 0
-        CU_TR_ADDRESS_MODE_CLAMP  = 1
-        CU_TR_ADDRESS_MODE_MIRROR = 2
+    ctypedef enum CUaddress_mode:
+        CU_TR_ADDRESS_MODE_WRAP
+        CU_TR_ADDRESS_MODE_CLAMP
+        CU_TR_ADDRESS_MODE_MIRROR
+        CU_TR_ADDRESS_MODE_BORDER
 
     ############################
     #
     #   Structs
     #
     ############################
+    ctypedef unsigned int CUdeviceptr
     ctypedef void * CUcontext
-    ctypedef void * CUdevice
+    ctypedef struct CUdevice:
+        pass
     ctypedef void * CUarray
     ctypedef void * CUstream
     ctypedef void * CUevent
@@ -152,26 +190,28 @@ cdef extern from "cuda.h":
     ctypedef void * CUdeviceptr
 
     ctypedef struct CUDA_MEMCPY2D:
-        unsigned int srcXInBytes, srcY
+        unsigned int srcXInBytes
+        unsigned int srcY
         CUmemorytype srcMemoryType
         void *srcHost
-        FCUdeviceptr srcDevice
+        CUdeviceptr srcDevice
         CUarray srcArray
         unsigned int srcPitch
-        unsigned int dstXInBytes, dstY
+        unsigned int dstXInBytes
+        unsigned int dstY
         CUmemorytype dstMemoryType
         void *dstHost
-        FCUdeviceptr dstDevice
+        CUdeviceptr dstDevice
         CUarray dstArray
         unsigned int dstPitch
         unsigned int WidthInBytes
         unsigned int Height
 
     ctypedef struct CUDA_ARRAY_DESCRIPTOR:
-        unsigned int Height
-        unsigned int NumChannels
+        size_t Width
+        size_t Height
         CUarray_format Format
-        unsigned int Width
+        size_t NumChannels
 
     ############################
     #
@@ -210,21 +250,21 @@ cdef extern from "cuda.h":
     #   Memory
     #
     ############################
-    cdef CUresult cuMemFree(FCUdeviceptr) nogil
-    cdef CUresult cuMemAlloc(FCUdeviceptr *, unsigned int) nogil
-    cdef CUresult cuMemAllocPitch(FCUdeviceptr *, size_t *, size_t, size_t, unsigned int) nogil
+    cdef CUresult cuMemFree(CUdeviceptr) nogil
+    cdef CUresult cuMemAlloc(CUdeviceptr *, unsigned int) nogil
+    cdef CUresult cuMemAllocPitch(CUdeviceptr *, size_t *, size_t, size_t, unsigned int) nogil
     cdef CUresult cuMemAllocHost(void **, unsigned int) nogil
     cdef CUresult cuMemFreeHost(void *) nogil
-    cdef CUresult cuMemHostGetDevicePointer (FCUdeviceptr *,void *, unsigned int) nogil
+    cdef CUresult cuMemHostGetDevicePointer (CUdeviceptr *,void *, unsigned int) nogil
     cdef CUresult cuMemGetInfo(size_t *, size_t *) nogil
     cdef CUresult cuMemcpy2D(CUDA_MEMCPY2D *pCopy)
     cdef CUresult cuMemcpy2DAsync(CUDA_MEMCPY2D *pCopy, CUstream)
-    cdef CUresult cuMemcpyDtoD (FCUdeviceptr, FCUdeviceptr, unsigned int)
-    cdef CUresult cuMemcpyDtoDAsync(FCUdeviceptr, FCUdeviceptr, unsigned int, CUstream)
-    cdef CUresult cuMemcpyDtoH(void *, FCUdeviceptr, unsigned int)
-    cdef CUresult cuMemcpyDtoHAsync(void *, FCUdeviceptr, unsigned int, CUstream)
-    cdef CUresult cuMemcpyHtoD(FCUdeviceptr,void *, unsigned int)
-    cdef CUresult cuMemcpyHtoDAsync(FCUdeviceptr,void *, unsigned int, CUstream)
+    cdef CUresult cuMemcpyDtoD (CUdeviceptr, CUdeviceptr, unsigned int)
+    cdef CUresult cuMemcpyDtoDAsync(CUdeviceptr, CUdeviceptr, unsigned int, CUstream)
+    cdef CUresult cuMemcpyDtoH(void *, CUdeviceptr, unsigned int)
+    cdef CUresult cuMemcpyDtoHAsync(void *, CUdeviceptr, unsigned int, CUstream)
+    cdef CUresult cuMemcpyHtoD(CUdeviceptr,void *, unsigned int)
+    cdef CUresult cuMemcpyHtoDAsync(CUdeviceptr,void *, unsigned int, CUstream)
 
     ############################
     #
@@ -271,7 +311,7 @@ cdef extern from "cuda.h":
     # Texrefs
     #
     ############################
-    cdef CUresult cuTexRefSetAddress2D (CUtexref, CUDA_ARRAY_DESCRIPTOR *, FCUdeviceptr, unsigned int) nogil
+    cdef CUresult cuTexRefSetAddress2D (CUtexref, CUDA_ARRAY_DESCRIPTOR *, CUdeviceptr, unsigned int) nogil
     cdef CUresult cuTexRefDestroy (CUtexref) nogil
     cdef CUresult cuTexRefCreate (CUtexref *) nogil
     cdef CUresult cuTexRefSetFlags (CUtexref, unsigned int) nogil
