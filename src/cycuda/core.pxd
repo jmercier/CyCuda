@@ -30,6 +30,19 @@ cdef class Context(object):
     cpdef pushCurrent(self)
 
 
+cdef class Buffer(object):
+    cdef Context ctx
+    cdef CUdeviceptr buffer_handle
+    cdef size_t size
+
+cdef class PitchedBuffer(Buffer):
+    cdef size_t pitch
+        
+
+cdef class HBuffer(Buffer):
+    cdef void * host
+
+
 cdef class CudaBuffer(object):
     cdef Context ctx
     cdef CUdeviceptr _deviceBuf

@@ -185,17 +185,22 @@ cdef extern from "cuda.h":
     #   Structs
     #
     ############################
-    ctypedef unsigned int CUdeviceptr
-    ctypedef void * CUcontext
-    ctypedef struct CUdevice:
+    ctypedef unsigned long long CUdeviceptr
+    ctypedef int CUdevice
+    ctypedef struct CUcontext:
         pass
-    ctypedef void * CUarray
-    ctypedef void * CUstream
-    ctypedef void * CUevent
-    ctypedef void * CUmodule
-    ctypedef void * CUfunction
-    ctypedef void * CUtexref
-    ctypedef void * CUdeviceptr
+    ctypedef struct CUarray:
+        pass
+    ctypedef struct CUstream:
+        pass
+    ctypedef struct CUevent:
+        pass
+    ctypedef struct CUmodule:
+        pass
+    ctypedef struct CUfunction:
+        pass
+    ctypedef struct CUtexref:
+        pass
 
     ctypedef struct CUDA_MEMCPY2D:
         unsigned int srcXInBytes
