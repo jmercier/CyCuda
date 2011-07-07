@@ -58,45 +58,45 @@ cdef class FFTPlanC2R(FFTPlan):
     def __init__(self, tuple shape):
         FFTPlan.__init__(self, shape, CUFFT_C2R)
 
-    def execute(self, core.DeviceBuffer inp, core.DeviceBuffer out):
-        CuFFTSafeCall(cufftExecC2R(self.plan, inp.buffer_handle, out.buffer_handle))
+    def execute(self, core.CuBuffer inp, core.CuBuffer out):
+        CuFFTSafeCall(cufftExecC2R(self.plan, inp.buf, out.buf))
 
 
 cdef class FFTPlanC2C(FFTPlan):
     def __init__(self, tuple shape):
         FFTPlan.__init__(self, shape, CUFFT_C2C)
 
-    def execute(self, core.DeviceBuffer inp, core.DeviceBuffer out, int direction = 1):
-        CuFFTSafeCall(cufftExecC2C(self.plan, inp.buffer_handle, out.buffer_handle, direction))
+    def execute(self, core.CuBuffer inp, core.CuBuffer out, int direction = 1):
+        CuFFTSafeCall(cufftExecC2C(self.plan, inp.buf, out.buf, direction))
 
 cdef class FFTPlanR2C(FFTPlan):
     def __init__(self, tuple shape):
         FFTPlan.__init__(self, shape, CUFFT_R2C)
 
-    def execute(self, core.DeviceBuffer inp, core.DeviceBuffer out):
-        CuFFTSafeCall(cufftExecR2C(self.plan, inp.buffer_handle, out.buffer_handle))
+    def execute(self, core.CuBuffer inp, core.CuBuffer out):
+        CuFFTSafeCall(cufftExecR2C(self.plan, inp.buf, out.buf))
 
 
 cdef class FFTPlanD2Z(FFTPlan):
     def __init__(self, tuple shape):
         FFTPlan.__init__(self, shape, CUFFT_D2Z)
 
-    def execute(self, core.DeviceBuffer inp, core.DeviceBuffer out):
-        CuFFTSafeCall(cufftExecD2Z(self.plan, inp.buffer_handle, out.buffer_handle))
+    def execute(self, core.CuBuffer inp, core.CuBuffer out):
+        CuFFTSafeCall(cufftExecD2Z(self.plan, inp.buf, out.buf))
 
 cdef class FFTPlanZ2D(FFTPlan):
     def __init__(self, tuple shape):
         FFTPlan.__init__(self, shape, CUFFT_Z2D)
 
-    def execute(self, core.DeviceBuffer inp, core.DeviceBuffer out):
-        CuFFTSafeCall(cufftExecZ2D(self.plan, inp.buffer_handle, out.buffer_handle))
+    def execute(self, core.CuBuffer inp, core.CuBuffer out):
+        CuFFTSafeCall(cufftExecZ2D(self.plan, inp.buf, out.buf))
 
 cdef class FFTPlanZ2Z(FFTPlan):
     def __init__(self, tuple shape):
         FFTPlan.__init__(self, shape, CUFFT_Z2Z)
 
-    def execute(self, core.DeviceBuffer inp, core.DeviceBuffer out, int direction = 1):
-        CuFFTSafeCall(cufftExecZ2Z(self.plan, inp.buffer_handle, out.buffer_handle, direction))
+    def execute(self, core.CuBuffer inp, core.CuBuffer out, int direction = 1):
+        CuFFTSafeCall(cufftExecZ2Z(self.plan, inp.buf, out.buf, direction))
 #
 # vim: filetype=pyrex
 #

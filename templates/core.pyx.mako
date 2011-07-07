@@ -60,6 +60,9 @@ CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT
 import threading
 import struct
 
+cimport numpy as np
+import numpy as np
+
 
 cdef dict error_translation_table     = \
     { CUDA_ERROR_INVALID_VALUE                  : "INVALID_VALUE",
@@ -168,7 +171,7 @@ cpdef init(unsigned int flags = 0):
     set_global_attributes()
 
 
-cpdef Device getDevice(unsigned int id = 0):
+cpdef Device get_device(unsigned int id = 0):
     cdef CUdevice ldev
     CudaSafeCall(cuDeviceGet(&ldev, id))
     cdef Device instance = Device.__new__(Device)
@@ -187,12 +190,12 @@ cpdef tuple ctxMemInfo():
     return (free, total)
 
 
-cpdef Context ctxCurrent():
+cpdef Context __ctxCurrent():
     cdef list cList = threading.current_thread().cudaCtx
     return <Context>cList[-1]
 
 
-cpdef Context ctxPopCurrent():
+def __ctx_pop_current():
     cdef CUcontext ctx
     CudaSafeCall(cuCtxPopCurrent(&ctx))
     cdef list cList = threading.current_thread().cudaCtx
@@ -201,98 +204,51 @@ cpdef Context ctxPopCurrent():
 
 
 
-
-cpdef DeviceBuffer allocate1D(tuple shape, unsigned int esize):
-    cdef int ndim = len(shape)
-    cdef unsigned int size = 1, s
-    cdef CUdeviceptr data
-    for s in shape:
-        size *= s
-    CudaSafeCall(cuMemAlloc(&data, size * esize))
-    cdef DeviceBuffer instance = DeviceBuffer.__new__(DeviceBuffer)
-    instance._deviceBuf = data
-    instance._pitch = -1
-    instance._size = size
-    return instance
-
-cpdef DeviceBuffer allocate2D(tuple shape, unsigned int esize):
-    cdef size_t size = 1, ndim = len(shape), pitch
-    cdef size_t width = shape[1], height = shape[0]
-    cdef CUdeviceptr data
-    if (ndim != 2):
-        raise ValueError("Pitched Memory Should be 2D")
-    CudaSafeCall(cuMemAllocPitch(&data, &pitch, width * esize, height, esize))
-    cdef DeviceBuffer instance = DeviceBuffer.__new__(DeviceBuffer)
-    instance._deviceBuf = data
-    instance.ctx = ctxCurrent()
-    instance._pitch = pitch
-    instance._size = pitch / esize * height
-    return instance
-
-
-cpdef HostBuffer allocateHost(tuple shape, unsigned int esize, unsigned int flags = CU_MEMHOSTALLOC_DEVICEMAP):
-    cdef unsigned int size = 1, ndim = len(shape), s
-    cdef void * data
-    for s in shape:
-        size *= s
-    cdef HostBuffer instance = HostBuffer.__new__(HostBuffer)
-    CudaSafeCall(cuMemAllocHost(&data, size * esize))
-    instance._hostBuf = data
-    instance.ctx = ctxCurrent()
-    instance._size = size
-    return instance
-
-
-cdef class LinearAllocator:
-    allocate = staticmethod(allocate1D)
-
-cdef class PitchedAllocator:
-    allocate = staticmethod(allocate2D)
-
-cdef class PinnedAllocator:
-    allocate = staticmethod(allocateHost)
-
-
-cpdef Event evtCreate(bint blocking = False):
+cpdef Event evt_create(bint blocking = False):
     cdef unsigned int flags = CU_EVENT_DEFAULT if not blocking else CU_EVENT_BLOCKING_SYNC
     cdef CUevent evt
     CudaSafeCall(cuEventCreate(&evt, flags))
+
     cdef Event instance = Event.__new__(Event)
-    instance._evt = evt
-    instance.ctx = ctxCurrent()
+    instance._evt   = evt
+    instance.ctx    = __ctxCurrent()
     return instance
 
 
-cpdef Stream streamCreate(unsigned int flags = 0):
+cpdef Stream stream_create(unsigned int flags = 0):
     cdef CUstream stream
     CudaSafeCall(cuStreamCreate(&stream, flags))
+
     cdef Stream instance = Stream.__new__(Stream)
-    instance._stream = stream
-    instance.ctx = ctxCurrent()
+    instance._stream    = stream
+    instance.ctx        = __ctxCurrent()
     return instance
 
-cpdef Module loadModule(char *filename):
+cpdef Module load_module(char *filename):
     cdef CUmodule mod
     CudaSafeCall(cuModuleLoad(&mod, filename))
+
     cdef Module instance = Module.__new__(Module)
-    instance._mod = mod
-    instance.ctx = ctxCurrent()
+    instance._mod       = mod
+    instance.ctx        = __ctxCurrent()
     return instance
 
-cpdef Module loadModuleEx(char *data):
+cpdef Module load_module_ex(char *data):
     cdef CUmodule mod
     CudaSafeCall(cuModuleLoadDataEx(&mod, data, 0, NULL, NULL))
+
     cdef Module instance = Module.__new__(Module)
-    instance._mod = mod
-    instance.ctx = ctxCurrent()
+    instance._mod       = mod
+    instance.ctx        = __ctxCurrent()
     return instance
 
-cpdef TexRef texRefCreate():
+cpdef TexRef tex_ref_create():
     cdef CUtexref tex
     CudaSafeCall(cuTexRefCreate(&tex))
     cdef TexRef instance = TexRef.__new__(TexRef)
-    instance._tex = tex
-    instance.ctx = ctxCurrent()
+
+    instance._tex       = tex
+    instance.ctx        = __ctxCurrent()
     return instance
 
 
@@ -322,7 +278,7 @@ cdef class Device(object):
 % endfor
 
 
-    cdef Context _ctxCreate(self,  CUresult (*allocator)(CUcontext *, unsigned int, CUdevice), CUctx_flags flags):
+    cdef Context _ctx_create(self,  CUresult (*allocator)(CUcontext *, unsigned int, CUdevice), CUctx_flags flags):
         cdef CUcontext lctx
         CudaSafeCall(allocator(&lctx, flags, self._dev))
 
@@ -336,35 +292,89 @@ cdef class Device(object):
         tList.append(instance)
         return instance
 
-    def ctxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
-        return self._ctxCreate(cuCtxCreate, flags)
+    def ctx_create(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
+        return self._ctx_create(cuCtxCreate, flags)
+
+    def __repr__(self):
+        return "%s name=%s capability=%s" % (self.__class__.__name__, self.name, str(self.capability))
 
 """
     def GLCtxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
         return self._ctxCreate(cudagl.cuGLCtxCreate, flags)
 """
 
+cdef class CuBuffer(object):
+    ${cuda_dealloc("cuMemFree(self.buf)")}
+
+    def __repr__(self):
+        return "%s size=%d" % (self.__class__.__name__, self.nbytes)
+
+cdef class CuHostBuffer(object):
+    ${cuda_dealloc("cuMemFreeHost(self.data)")}
+    def __repr__(self):
+        return "%s size=%d" % (self.__class__.__name__, self.nbytes)
+
+
+cdef class CuTypedBuffer(CuBuffer):
+    def __repr__(self):
+        return "%s size=%d, shape=%s type=%s" % (self.__class__.__name__, self.nbytes, str(self.shape), str(self.dtype))
+
+def __allocate_raw(size_t size):
+    cdef CUdeviceptr data
+    CudaSafeCall(cuMemAlloc(&data, size))
+
+    cdef CuBuffer instance = CuBuffer.__new__(CuBuffer)
+
+    instance.ctx        = __ctxCurrent()
+    instance.nbytes     = size
+    instance.buf        = data
+    return instance
+
+def __allocate(tuple shape, object dtype = 'float'):
+    cdef np.dtype dt        = np.dtype(dtype)
+    cdef size_t size        = sum(shape) * dt.itemsize
+
+    cdef CUdeviceptr data
+    CudaSafeCall(cuMemAlloc(&data, size))
+
+    cdef CuTypedBuffer instance = CuTypedBuffer.__new__(CuTypedBuffer)
+
+    instance.ctx        = __ctxCurrent()
+    instance.nbytes     = size
+    instance.buf        = data
+    instance.shape      = shape
+    instance.dtype      = dt
+    return instance
+
+def __allocate_host(size_t size):
+    cdef void * data
+    CudaSafeCall(cuMemAllocHost(&data, size))
+
+    cdef CuHostBuffer instance = CuHostBuffer.__new__(CuHostBuffer)
+
+    instance.ctx    = __ctxCurrent()
+    instance.nbytes = size
+    instance.data   = data
+    return instance
 
 cdef class Context(object):
     ${cuda_dealloc("cuCtxDestroy(self._ctx)")}
 
-    cpdef pushCurrent(self):
+    def push_current(self):
         CudaSafeCall(cuCtxPushCurrent(self._ctx))
         cdef list tList  = threading.current_thread().cudaCtx
         tList.append(self)
 
+    allocate_raw    = staticmethod(__allocate_raw)
+    allocate_host   = staticmethod(__allocate_host)
+    allocate        = staticmethod(__allocate)
 
-cdef class CudaBuffer(object):
-    property size:
-        def __get__(self):
-            return self._size
+    current         = staticmethod(__ctxCurrent)
+    pop_current     = staticmethod(__ctx_pop_current)
 
 
-cdef class DeviceBuffer(CudaBuffer):
-    ${cuda_dealloc("cuMemFree(self._deviceBuf)")}
 
-cdef class HostBuffer(CudaBuffer):
-    ${cuda_dealloc("cuMemFreeHost(self._hostBuf)")}
+
 
 
 cdef class Stream(object):
@@ -399,20 +409,22 @@ cdef class Event(object):
 cdef class Module(object):
     ${cuda_dealloc("cuModuleUnload(self._mod)")}
 
-    cpdef Function getFunction(self, char *name):
+    def get_function(self, char *name):
         cdef CUfunction fun
         CudaSafeCall(cuModuleGetFunction(&fun, self._mod, name))
+
         cdef Function instance = Function.__new__(Function)
-        instance.mod = self
-        instance._fun = fun
+        instance.mod    = self
+        instance._fun   = fun
         return instance
 
-    cpdef ModuleTexRef getTexref(self, char *name):
+    def get_texref(self, char *name):
         cdef CUtexref tex
         CudaSafeCall(cuModuleGetTexRef(&tex, self._mod, name))
+
         cdef ModuleTexRef instance = ModuleTexRef.__new__(ModuleTexRef)
-        instance.mod = self
-        instance._tex = tex
+        instance.mod    = self
+        instance._tex   = tex
         return instance
 
 
@@ -430,25 +442,25 @@ cdef class Function(object):
         def __get__(self):
             return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, self._fun)
 
-    property sharedSize:
+    property shared_size:
         def __get__(self):
             return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, self._fun)
         def __set__(self, unsigned int bytes):
             CudaSafeCall(cuFuncSetSharedSize(self._fun, bytes))
 
-    property constSize:
+    property const_size:
         def __get__(self):
             return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_CONST_SIZE_BYTES, self._fun)
 
-    property localSize:
+    property local_size:
         def __get__(self):
             return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES, self._fun)
 
-    property numRegs:
+    property num_regs:
         def __get__(self):
             return _getFunctionAttribute(CU_FUNC_ATTRIBUTE_NUM_REGS, self._fun)
 
-    def prepareCall(self, *args):
+    def prepare_call(self, *args):
         s = self._pstruct.pack(*args)
         cdef char *packed = s
         CudaSafeCall(cuParamSetv(self._fun, 0, <void *>packed, self._pstruct_size))
@@ -460,7 +472,7 @@ cdef class Function(object):
         self.setBlockShape(block[0], block[1], block[2])
         self.launchGrid(grid[0], grid[1])
 
-    cpdef launchGrid(self, int xgrid, int ygrid):
+    cpdef launch_grid(self, int xgrid, int ygrid):
         CudaSafeCall(cuLaunchGrid(self._fun, xgrid, ygrid))
 
     cpdef setBlockShape(self, int xblock, int yblock, int zblock):

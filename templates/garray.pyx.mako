@@ -1,12 +1,16 @@
 cimport core as cuda
 cimport numpy as np
 
+
+
+
+"""
+
 #################################################
 #
 #  Helper code (C only)
 #
 #################################################
-"""
 cdef void setHostSrc(CUDA_MEMCPY2D *st, np.ndarray ary):
         st.srcPitch = ary.strides[0]
         st.srcXInBytes = st.srcY = 0
@@ -340,7 +344,7 @@ cdef class g2darray(gndarray):
 cimport numpy as np
 import numpy as np
 
-cpdef object page_locked(tuple shape, np.dtype dtype = np.dtype('float23')):
+cpdef object page_locked(tuple shape, object dtype = 'float32'):
     return None
 
 
