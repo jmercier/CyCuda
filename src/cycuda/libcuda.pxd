@@ -239,66 +239,80 @@ cdef extern from "cuda.h":
     #   Contexts
     #
     ############################
-    cdef CUresult cuCtxCreate(CUcontext *, unsigned int, CUdevice) nogil
-    cdef CUresult cuCtxDestroy(CUcontext) nogil
-    cdef CUresult cuCtxPopCurrent(CUcontext *) nogil
-    cdef CUresult cuCtxPushCurrent(CUcontext) nogil
-    cdef CUresult cuCtxDetach(CUcontext) nogil
-    cdef CUresult cuCtxSynchronize() nogil
+    cdef:
+        CUresult cuCtxCreate(CUcontext *, unsigned int, CUdevice) nogil
+        CUresult cuCtxDestroy(CUcontext) nogil
+        CUresult cuCtxPopCurrent(CUcontext *) nogil
+        CUresult cuCtxPushCurrent(CUcontext) nogil
+        CUresult cuCtxDetach(CUcontext) nogil
+        CUresult cuCtxSynchronize() nogil
+        CUresult cuCtxEnablePeerAccess(CUcontext, unsigned int)
+        CUresult cuCtxDisablePeerAccess(CUcontext)
 
     ############################
     #
     #   Devices
     #
     ############################
-    cdef CUresult cuDeviceGet(CUdevice *, int) nogil
-    cdef CUresult cuDeviceComputeCapability(int *, int *, CUdevice) nogil
-    cdef CUresult cuDeviceGetCount(int *) nogil
-    cdef CUresult cuDeviceGetName(char *, int, CUdevice) nogil
-    cdef CUresult cuDeviceTotalMem(size_t *, CUdevice) nogil
-    cdef CUresult cuDeviceGetAttribute(int *, CUdevice_attribute, CUdevice) nogil
+    cdef:
+        CUresult cuDeviceGet(CUdevice *, int) nogil
+        CUresult cuDeviceComputeCapability(int *, int *, CUdevice) nogil
+        CUresult cuDeviceGetCount(int *) nogil
+        CUresult cuDeviceGetName(char *, int, CUdevice) nogil
+        CUresult cuDeviceTotalMem(size_t *, CUdevice) nogil
+        CUresult cuDeviceGetAttribute(int *, CUdevice_attribute, CUdevice) nogil
+        CUresult cuDeviceCanAccessPeer(int *, CUdevice , CUdevice )
 
     ############################
     #
     #   Memory
     #
     ############################
-    cdef CUresult cuMemFree(CUdeviceptr) nogil
-    cdef CUresult cuMemAlloc(CUdeviceptr *, unsigned int) nogil
-    cdef CUresult cuMemAllocPitch(CUdeviceptr *, size_t *, size_t, size_t, unsigned int) nogil
-    cdef CUresult cuMemAllocHost(void **, unsigned int) nogil
-    cdef CUresult cuMemFreeHost(void *) nogil
-    cdef CUresult cuMemHostGetDevicePointer (CUdeviceptr *,void *, unsigned int) nogil
-    cdef CUresult cuMemGetInfo(size_t *, size_t *) nogil
-    cdef CUresult cuMemcpy2D(CUDA_MEMCPY2D *pCopy)
-    cdef CUresult cuMemcpy2DAsync(CUDA_MEMCPY2D *pCopy, CUstream)
-    cdef CUresult cuMemcpyDtoD (CUdeviceptr, CUdeviceptr, unsigned int)
-    cdef CUresult cuMemcpyDtoDAsync(CUdeviceptr, CUdeviceptr, unsigned int, CUstream)
-    cdef CUresult cuMemcpyDtoH(void *, CUdeviceptr, unsigned int)
-    cdef CUresult cuMemcpyDtoHAsync(void *, CUdeviceptr, unsigned int, CUstream)
-    cdef CUresult cuMemcpyHtoD(CUdeviceptr,void *, unsigned int)
-    cdef CUresult cuMemcpyHtoDAsync(CUdeviceptr,void *, unsigned int, CUstream)
+    cdef:
+        CUresult cuMemFree(CUdeviceptr) nogil
+        CUresult cuMemAlloc(CUdeviceptr *, unsigned int) nogil
+        CUresult cuMemAllocPitch(CUdeviceptr *, size_t *, size_t, size_t, unsigned int) nogil
+        CUresult cuMemAllocHost(void **, unsigned int) nogil
+        CUresult cuMemFreeHost(void *) nogil
+        CUresult cuMemGetInfo(size_t *, size_t *) nogil
+        CUresult cuMemcpy2D(CUDA_MEMCPY2D *pCopy)
+        CUresult cuMemcpy2DAsync(CUDA_MEMCPY2D *pCopy, CUstream)
+        CUresult cuMemcpyDtoD (CUdeviceptr, CUdeviceptr, unsigned int)
+        CUresult cuMemcpyDtoDAsync(CUdeviceptr, CUdeviceptr, unsigned int, CUstream)
+        CUresult cuMemcpyDtoH(void *, CUdeviceptr, unsigned int)
+        CUresult cuMemcpyDtoHAsync(void *, CUdeviceptr, unsigned int, CUstream)
+        CUresult cuMemcpyHtoD(CUdeviceptr,void *, unsigned int)
+        CUresult cuMemcpyHtoDAsync(CUdeviceptr,void *, unsigned int, CUstream)
+        CUresult cuMemHostGetFlags(unsigned int *, void *)
+        CUresult cuMemcpy(CUdeviceptr, CUdeviceptr, size_t)
+        CUresult cuMemcpyAsync(CUdeviceptr , CUdeviceptr , size_t , CUstream )
+        CUresult cuMemHostGetDevicePointer(CUdeviceptr *, void *, unsigned int)
+
 
     ############################
     #
     #   Events
     #
     ############################
-    cdef CUresult cuEventElapsedTime(float *, CUevent, CUevent) nogil
-    cdef CUresult cuEventCreate(CUevent *, unsigned int) nogil
-    cdef CUresult cuEventQuery(CUevent) nogil
-    cdef CUresult cuEventRecord(CUevent, CUstream) nogil
-    cdef CUresult cuEventDestroy(CUevent) nogil
+    cdef:
+        CUresult cuEventElapsedTime(float *, CUevent, CUevent) nogil
+        CUresult cuEventCreate(CUevent *, unsigned int) nogil
+        CUresult cuEventQuery(CUevent) nogil
+        CUresult cuEventRecord(CUevent, CUstream) nogil
+        CUresult cuEventDestroy(CUevent) nogil
+        CUresult cuEventSynchronize(CUevent)
 
     ############################
     #
     #   Streams
     #
     ############################
-    cdef CUresult cuStreamCreate(CUstream *, unsigned int) nogil
-    cdef CUresult cuStreamQuery(CUstream hStream) nogil
-    cdef CUresult cuStreamSynchronize(CUstream hStream) nogil
-    cdef CUresult cuStreamDestroy(CUstream hStream) nogil
+    cdef:
+        CUresult cuStreamCreate(CUstream *, unsigned int) nogil
+        CUresult cuStreamQuery(CUstream hStream) nogil
+        CUresult cuStreamSynchronize(CUstream hStream) nogil
+        CUresult cuStreamDestroy(CUstream hStream) nogil
+        CUresult cuStreamWaitEvent(CUstream, CUevent, unsigned int )
 
     ############################
     #

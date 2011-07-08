@@ -63,6 +63,8 @@ import struct
 cimport numpy as np
 import numpy as np
 
+import operator
+
 
 cdef dict error_translation_table     = \
     { CUDA_ERROR_INVALID_VALUE                  : "INVALID_VALUE",
@@ -180,7 +182,7 @@ cpdef Device get_device(unsigned int id = 0):
 
 
 
-cpdef ctxSynchronize():
+def __ctx_synchronize():
     CudaSafeCall(cuCtxSynchronize())
 
 
@@ -265,6 +267,10 @@ cdef class Device(object):
             CudaSafeCall(cuDeviceGetName(name, MAXNAMELENGTH, self._dev))
             return name
 
+    def can_access_peer(self, Device dev):
+        cdef int value
+        CudaSafeCall(cuDeviceCanAccessPeer(&value, self.dev, dev.dev))
+
 % for pname in device_properties:
     property ${pname}:
         def __get__(self):
@@ -303,7 +309,7 @@ cdef class Device(object):
         return self._ctxCreate(cudagl.cuGLCtxCreate, flags)
 """
 
-cdef class CuBuffer(object):
+cdef class CuDeviceBuffer(CuBuffer):
     ${cuda_dealloc("cuMemFree(self.buf)")}
 
     def __repr__(self):
@@ -314,8 +320,28 @@ cdef class CuHostBuffer(object):
     def __repr__(self):
         return "%s size=%d" % (self.__class__.__name__, self.nbytes)
 
+    property flag:
+        def __get__(self):
+            cdef unsigned int flags
+            CudaSafeCall(cuMemHostGetFlags(&flags, self.data))
+            return flags
 
-cdef class CuTypedBuffer(CuBuffer):
+    def get_device(self, unsigned int flags = 0):
+        cdef CUdeviceptr buf
+        CudaSafeCall(cuMemHostGetDevicePointer(&buf, self.data, flags))
+        cdef CuBuffer instance = CuBuffer.__new__(CuBuffer)
+
+        instance.base   = self
+        instance.buf    = buf
+        instance.nbytes = self.nbytes
+        instance.ctx    = self.ctx
+
+        return instance
+
+
+
+
+cdef class CuTypedBuffer(CuDeviceBuffer):
     def __repr__(self):
         return "%s size=%d, shape=%s type=%s" % (self.__class__.__name__, self.nbytes, str(self.shape), str(self.dtype))
 
@@ -323,7 +349,7 @@ def __allocate_raw(size_t size):
     cdef CUdeviceptr data
     CudaSafeCall(cuMemAlloc(&data, size))
 
-    cdef CuBuffer instance = CuBuffer.__new__(CuBuffer)
+    cdef CuDeviceBuffer instance = CuDeviceBuffer.__new__(CuDeviceBuffer)
 
     instance.ctx        = __ctxCurrent()
     instance.nbytes     = size
@@ -332,7 +358,7 @@ def __allocate_raw(size_t size):
 
 def __allocate(tuple shape, object dtype = 'float'):
     cdef np.dtype dt        = np.dtype(dtype)
-    cdef size_t size        = sum(shape) * dt.itemsize
+    cdef size_t size        = reduce(operator.mul, shape) * dt.itemsize
 
     cdef CUdeviceptr data
     CudaSafeCall(cuMemAlloc(&data, size))
@@ -365,12 +391,19 @@ cdef class Context(object):
         cdef list tList  = threading.current_thread().cudaCtx
         tList.append(self)
 
+    def enable_peer(self, unsigned int flags = 0):
+        CudaSafeCall(cuCtxEnablePeerAccess(self._ctx, flags))
+
+    def disable_peer(self):
+        CudaSafeCall(cuCtxDisablePeerAccess(self._ctx))
+
     allocate_raw    = staticmethod(__allocate_raw)
     allocate_host   = staticmethod(__allocate_host)
     allocate        = staticmethod(__allocate)
 
     current         = staticmethod(__ctxCurrent)
     pop_current     = staticmethod(__ctx_pop_current)
+    synchronize     = staticmethod(__ctx_synchronize)
 
 
 
@@ -380,11 +413,14 @@ cdef class Context(object):
 cdef class Stream(object):
     ${cuda_dealloc("cuStreamDestroy(self._stream)")}
 
-    cpdef bint query(self):
+    def query(self):
         return CUDA_SUCCESS == cuStreamQuery(self._stream)
 
-    cpdef synchronize(self):
+    def synchronize(self):
         CudaSafeCall(cuStreamSynchronize(self._stream))
+
+    def wait(self, Event evt, unsigned int flags):
+        CudaSafeCall(cuStreamWaitEvent(self._stream, evt._evt, flags))
 
 
 
@@ -399,6 +435,9 @@ cdef class Event(object):
 
     cpdef bint query(self):
         return CUDA_SUCCESS == cuEventQuery(self._evt)
+
+    def synchronize(self):
+        cuEventSynchronize(self._evt)
 
     def __sub__(Event self not None, Event evt2 not None):
         cdef float pMilliseconds

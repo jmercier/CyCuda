@@ -1,5 +1,5 @@
-cimport core as cuda
 cimport numpy as np
+import numpy as np
 
 
 
@@ -340,20 +340,84 @@ cdef class g2darray(gndarray):
 
 
 """
+import operator
+
+cimport core
+import core
+
+cimport libc.stdlib as libc
 
 cimport numpy as np
 import numpy as np
 
-cpdef object page_locked(tuple shape, object dtype = 'float32'):
-    return None
+np.import_array()
+
+cpdef to_gpu(core.CuBuffer gbuffer, np.ndarray ary):
+    if gbuffer.nbytes != ary.nbytes:
+        raise RuntimeError("Size mismatch")
+
+    cuMemcpyHtoD(gbuffer.buf, ary.data, ary.nbytes)
+
+
+cpdef from_gpu(np.ndarray ary, core.CuBuffer gbuffer):
+    if gbuffer.nbytes != ary.nbytes:
+        raise RuntimeError("Size mismatch")
+
+    cuMemcpyDtoH(ary.data, gbuffer.buf, ary.nbytes)
+
+cpdef to_gpu_async(core.CuBuffer gbuffer, np.ndarray ary, core.Stream stream = None):
+    if gbuffer.nbytes != ary.nbytes:
+        raise RuntimeError("Size mismatch")
+
+    cdef CUstream st = <CUstream>NULL if stream is None else stream._stream
+    cuMemcpyHtoDAsync(gbuffer.buf, ary.data, ary.nbytes, st)
+
+cpdef from_gpu_async(np.ndarray ary, core.CuBuffer gbuffer, core.Stream stream = None):
+    if gbuffer.nbytes != ary.nbytes:
+        raise RuntimeError("Size mismatch")
+
+    cdef CUstream st = <CUstream>NULL if stream is None else stream._stream
+    cuMemcpyDtoHAsync(ary.data, gbuffer.buf, ary.nbytes, st)
+
+
+cpdef copy_async(core.CuBuffer dst, core.CuBuffer src,  core.Stream stream = None):
+    if dst.nbytes != src.nbytes:
+        raise RuntimeError("Size mismatch")
+
+    cdef CUstream st = <CUstream>NULL if stream is None else stream._stream
+    cuMemcpyAsync(dst.buf, src.buf, src.nbytes, st)
+
+
+cpdef copy(core.CuBuffer dst, core.CuBuffer src):
+    if dst.nbytes != src.nbytes:
+        raise RuntimeError("Size mismatch")
+    cuMemcpy(dst.buf, src.buf, src.nbytes)
+
+
+cpdef object page_locked(tuple shape, object dtype = 'float'):
+    cdef size_t ndim            = len(shape)
+    cdef np.dtype dt            = np.dtype(dtype)
+    cdef size_t nbytes          = reduce(operator.mul, shape) * dt.itemsize
+    cdef CuHostBuffer buffer    = core.Context.allocate_host(nbytes)
+
+    cdef np.npy_intp *dims = <np.npy_intp *>libc.malloc(sizeof(np.npy_intp) * ndim)
+    for i from 0 <= i < ndim:
+        dims[i] = shape[i]
+    cdef np.ndarray ary = np.PyArray_SimpleNewFromData(ndim, dims, dt.type_num, buffer.data)
+    np.set_array_base(ary, buffer)
+    #libc.free(dims)
+    return ary
+
+def test():
+    import core
+    core.init()
+    d = core.Device(0)
+    c = d.ctx_create()
+    import garray
+    return garray.page_locked((512, 512), dtype = 'float32')
 
 
 #
 # vim: filetype=pyrex
 #
 #
-
-
-
-
-

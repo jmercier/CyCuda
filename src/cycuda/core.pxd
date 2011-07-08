@@ -29,18 +29,21 @@ cdef class CuHostBuffer(object):
     cdef void * data
 
 cdef class CuBuffer(object):
-    cdef Context ctx
-    cdef size_t nbytes
-    cdef CUdeviceptr buf
+    cdef :
+        Context ctx
+        size_t nbytes
+        CUdeviceptr buf
+        object base
 
-cdef class CuTypedBuffer(CuBuffer):
+cdef class CuDeviceBuffer(CuBuffer):
+    pass
+
+cdef class CuTypedBuffer(CuDeviceBuffer):
     cdef np.dtype dtype
     cdef tuple shape
 
 cdef class Stream(object):
     cdef CUstream _stream
-    cpdef bint query(self)
-    cpdef synchronize(self)
 
 cdef class Event(object):
     cdef Context ctx
