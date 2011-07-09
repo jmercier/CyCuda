@@ -41,6 +41,11 @@ ELSE (Cython_FOUND)
 ENDIF (Cython_FOUND)
 
 
+# GLOBAL CYTHON Compilation options
+SET(CYTHON_CFLAGS "-I/usr/include/python2.7 -I/usr/include/python2.7 -fno-strict-aliasing -g -O2 -DNDEBUG -g -fwrapv -O2 -Wall -Wstrict-prototypes")
+SET(CYTHON_LINK_FLAGS "")
+
+
 # This allows to link Cython files
 # Examples:
 # 1) to compile assembly.pyx to assembly.so:
@@ -64,11 +69,13 @@ endfunction(CYTHON_ADD_MODULE_PYX)
 
 # Cythonizes and compiles a .pyx file
 
-function(CYTHON_ADD_MODULE name)
-    CYTHON_ADD_MODULE_PYX(${name})
+function(CYTHON_ADD_MODULE name pyxfile)
+    CYTHON_ADD_MODULE_PYX(${pyxfile})
     # We need Python for this:
     FIND_PACKAGE(PythonInterp REQUIRED)
     FIND_PACKAGE(PythonLibs REQUIRED)
-    PYTHON_ADD_MODULE(${name} ${ARGN})
+    PYTHON_ADD_MODULE(${name} ${pyxfile} ${ARGN})
+    SET_TARGET_PROPERTIES(${name} PROPERTIES COMPILE_FLAGS "-I${PYTHON_INCLUDE_DIR} ${Cython_CFLAGS}")
+    SET_TARGET_PROPERTIES(${name} PROPERTIES LINK_FLAGS "${CYTHON_LINK_FLAGS}")
 endfunction(CYTHON_ADD_MODULE)
 
