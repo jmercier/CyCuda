@@ -34,8 +34,10 @@ cdef extern from "cufft.h":
         CUFFT_INVALID_SIZE
         CUFFT_UNALIGNED_DATA
 
-    ctypedef CUdeviceptr cufftReal
-    ctypedef CUdeviceptr cufftDoubleReal
+    ctypedef struct cufftReal:
+        pass
+    ctypedef struct cufftDoubleReal:
+        pass
     ctypedef struct cufftComplex:
         pass
     ctypedef struct cufftDoubleComplex:
@@ -51,30 +53,30 @@ cdef extern from "cufft.h":
     cdef cufftResult cufftDestroy(cufftHandle)
 
     cdef cufftResult cufftExecC2C(cufftHandle plan,
-                                  CUdeviceptr idata,
-                                  CUdeviceptr odata,
+                                  cufftComplex *idata,
+                                  cufftComplex *odata,
                                   int direction)
 
     cdef cufftResult cufftExecR2C(cufftHandle plan,
-                                  CUdeviceptr idata,
-                                  CUdeviceptr odata)
+                                  cufftReal * idata,
+                                  cufftComplex* odata)
 
     cdef cufftResult cufftExecC2R(cufftHandle plan,
-                                  CUdeviceptr idata,
-                                  CUdeviceptr odata)
+                                  cufftComplex * idata,
+                                  cufftReal * odata)
 
     cdef cufftResult cufftExecZ2Z(cufftHandle plan,
-                                  CUdeviceptr idata,
-                                  CUdeviceptr odata,
+                                  cufftDoubleComplex * idata,
+                                  cufftDoubleComplex * odata,
                                   int direction)
 
     cdef cufftResult cufftExecD2Z(cufftHandle plan,
-                                  CUdeviceptr idata,
-                                  CUdeviceptr odata)
+                                  cufftDoubleReal * idata,
+                                  cufftDoubleComplex *odata)
 
     cdef cufftResult cufftExecZ2D(cufftHandle plan,
-                                  CUdeviceptr idata,
-                                  CUdeviceptr odata)
+                                  cufftDoubleComplex * idata,
+                                  cufftDoubleReal * odata)
 
     #cdef cufftResult cufftSetStream(cufftHandle plan,
     #                                cudaStream_t stream)

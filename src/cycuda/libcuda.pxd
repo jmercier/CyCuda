@@ -185,7 +185,7 @@ cdef extern from "cuda.h":
     #   Structs
     #
     ############################
-    ctypedef unsigned long long CUdeviceptr
+    ctypedef void * CUdeviceptr
     ctypedef int CUdevice
     ctypedef struct CUcontext:
         pass

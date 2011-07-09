@@ -65,6 +65,16 @@ import numpy as np
 
 import operator
 
+cimport profiler
+
+def ProfilerStart():
+    CudaSafeCall(profiler.cuProfilerStart())
+
+def ProfilerStop():
+    CudaSafeCall(profiler.cuProfilerStop())
+
+def ProfilerInitialize(char * config, char * output):
+    CudaSafeCall(profiler.cuProfilerInitialize(config, output, profiler.CU_OUT_KEY_VALUE_PAIR))
 
 cdef dict error_translation_table     = \
     { CUDA_ERROR_INVALID_VALUE                  : "INVALID_VALUE",
