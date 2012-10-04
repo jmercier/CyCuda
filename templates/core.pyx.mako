@@ -64,6 +64,7 @@ cimport numpy as np
 import numpy as np
 
 import operator
+import functools
 
 cimport profiler
 
@@ -279,7 +280,8 @@ cdef class Device(object):
 
     def can_access_peer(self, Device dev):
         cdef int value
-        CudaSafeCall(cuDeviceCanAccessPeer(&value, self.dev, dev.dev))
+        CudaSafeCall(cuDeviceCanAccessPeer(&value, self._dev, dev._dev))
+        return value
 
 % for pname in device_properties:
     property ${pname}:
@@ -312,7 +314,7 @@ cdef class Device(object):
         return self._ctx_create(cuCtxCreate, flags)
 
     def __repr__(self):
-        return "%s name=%s capability=%s" % (self.__class__.__name__, self.name, str(self.capability))
+        return '< %s name="%s" capability="%s" />' % (self.__class__.__name__, self.name, str(self.capability))
 
 """
     def GLCtxCreate(self, CUctx_flags flags = CU_CTX_SCHED_AUTO):
@@ -323,12 +325,12 @@ cdef class CuDeviceBuffer(CuBuffer):
     ${cuda_dealloc("cuMemFree(self.buf)")}
 
     def __repr__(self):
-        return "%s size=%d" % (self.__class__.__name__, self.nbytes)
+        return r'< %s size="%d" />' % (self.__class__.__name__, self.nbytes)
 
 cdef class CuHostBuffer(object):
     ${cuda_dealloc("cuMemFreeHost(self.data)")}
     def __repr__(self):
-        return "%s size=%d" % (self.__class__.__name__, self.nbytes)
+        return r'< %s size="%d" />' % (self.__class__.__name__, self.nbytes)
 
     property flag:
         def __get__(self):
@@ -353,7 +355,7 @@ cdef class CuHostBuffer(object):
 
 cdef class CuTypedBuffer(CuDeviceBuffer):
     def __repr__(self):
-        return "%s size=%d, shape=%s type=%s" % (self.__class__.__name__, self.nbytes, str(self.shape), str(self.dtype))
+        return r'< %s size="%d", shape="%s" type="%s" />' % (self.__class__.__name__, self.nbytes, str(self.shape), str(self.dtype))
 
 def __allocate_raw(size_t size):
     cdef CUdeviceptr data
@@ -368,7 +370,7 @@ def __allocate_raw(size_t size):
 
 def __allocate(tuple shape, object dtype = 'float'):
     cdef np.dtype dt        = np.dtype(dtype)
-    cdef size_t size        = reduce(operator.mul, shape) * dt.itemsize
+    cdef size_t size        = functools.reduce(operator.mul, shape) * dt.itemsize
 
     cdef CUdeviceptr data
     CudaSafeCall(cuMemAlloc(&data, size))
